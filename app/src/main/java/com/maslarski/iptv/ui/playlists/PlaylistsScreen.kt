@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -119,7 +119,7 @@ fun PlaylistsScreen(
         }
         Spacer(Modifier.height(20.dp))
         if (list.isEmpty()) {
-            EmptyState(stringResource(R.string.home_empty_title), body = stringResource(R.string.home_empty_body), icon = Icons.Filled.PlaylistPlay)
+            EmptyState(stringResource(R.string.home_empty_title), body = stringResource(R.string.home_empty_body), icon = Icons.AutoMirrored.Filled.PlaylistPlay)
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 48.dp)) {
                 items(list, key = { it.id }) { p ->
@@ -162,7 +162,7 @@ private fun PlaylistRow(
                 Modifier.size(48.dp).clip(CircleShape).background(if (playlist.isActive) Palette.Gold else Palette.SurfaceHighest),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(if (playlist.isActive) Icons.Filled.Check else Icons.Filled.PlaylistPlay, null, tint = if (playlist.isActive) Palette.Background else Palette.Muted)
+                Icon(if (playlist.isActive) Icons.Filled.Check else Icons.AutoMirrored.Filled.PlaylistPlay, null, tint = if (playlist.isActive) Palette.Background else Palette.Muted)
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {

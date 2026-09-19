@@ -8,7 +8,8 @@ plugins {
 
 android {
     namespace = "com.maslarski.iptv"
-    compileSdk = 36
+    compileSdk = 37
+    compileSdkMinor = 2
 
     defaultConfig {
         applicationId = "com.maslarski.iptv"
@@ -55,7 +56,6 @@ kotlin {
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
             "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
             "-opt-in=androidx.tv.material3.ExperimentalTvMaterial3Api",
-            "-opt-in=androidx.media3.common.util.UnstableApi",
         )
     }
 }

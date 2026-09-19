@@ -28,6 +28,7 @@ object Palette {
     val FocusGradient = Brush.linearGradient(listOf(NeonPurple, ElectricBlue))
     val HeroScrim = Brush.verticalGradient(listOf(Color.Transparent, Background.copy(alpha = 0.85f), Background))
     val HeroSideScrim = Brush.horizontalGradient(listOf(Background, Background.copy(alpha = 0.7f), Color.Transparent))
+    val HeroTopScrim = Brush.verticalGradient(listOf(Background.copy(alpha = 0.9f), Background.copy(alpha = 0.5f), Color.Transparent))
 }
 
 private val DarkScheme = darkColorScheme(
