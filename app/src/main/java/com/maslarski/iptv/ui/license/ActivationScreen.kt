@@ -55,6 +55,7 @@ import com.maslarski.iptv.domain.license.LicenseState
 import com.maslarski.iptv.domain.license.SubscriptionStatus
 import com.maslarski.iptv.ui.components.Badge
 import com.maslarski.iptv.ui.components.GlowButton
+import com.maslarski.iptv.ui.components.dpadTextField
 import com.maslarski.iptv.ui.components.focusGlow
 import com.maslarski.iptv.ui.components.rememberFocusState
 import com.maslarski.iptv.ui.components.rememberInteractionSource
@@ -163,7 +164,7 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
                 OutlinedTextField(
                     value = key,
                     onValueChange = { key = it.uppercase(); viewModel.clearResult() },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().dpadTextField(),
                     singleLine = true,
                     label = { Text(stringResource(R.string.activation_key)) },
                     placeholder = { Text("${selected.code}-XXXX-XXXX-XXXX", color = Palette.Muted) },

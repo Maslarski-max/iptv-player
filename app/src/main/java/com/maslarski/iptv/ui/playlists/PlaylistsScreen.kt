@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +75,7 @@ import com.maslarski.iptv.ui.components.ConfirmDialog
 import com.maslarski.iptv.ui.components.EmptyState
 import com.maslarski.iptv.ui.components.GlowButton
 import com.maslarski.iptv.ui.components.Pill
+import com.maslarski.iptv.ui.components.dpadTextField
 import com.maslarski.iptv.ui.components.focusGlow
 import com.maslarski.iptv.ui.components.rememberInteractionSource
 import com.maslarski.iptv.ui.navigation.Route
@@ -166,14 +168,23 @@ fun PlaylistRow(
 ) {
     val interaction = rememberInteractionSource()
     val shape = RoundedCornerShape(16.dp)
+    // The card itself is not focusable: the info area (activate) and the action buttons are focus
+    // siblings so Right/Left moves between them on a D-pad.
     Column(
         Modifier.fillMaxWidth()
-            .focusGlow(interaction, shape, focusedScale = 1.01f, borderWidth = 2.dp, glowColor = if (playlist.isActive) Palette.Gold else Palette.NeonPurple)
+            .focusGroup()
             .clip(shape).background(if (playlist.isActive) Palette.SurfaceElevated else Palette.Surface)
-            .clickable(interactionSource = interaction, indication = null, onClick = onActivate)
-            .padding(20.dp),
+            .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.weight(1f)
+                    .focusGlow(interaction, shape, focusedScale = 1.01f, borderWidth = 2.dp, glowColor = if (playlist.isActive) Palette.Gold else Palette.NeonPurple)
+                    .clip(shape)
+                    .clickable(interactionSource = interaction, indication = null, onClick = onActivate)
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
             Box(
                 Modifier.size(48.dp).clip(CircleShape).background(if (playlist.isActive) Palette.Gold else Palette.SurfaceHighest),
                 contentAlignment = Alignment.Center,
@@ -194,6 +205,8 @@ fun PlaylistRow(
                     style = MaterialTheme.typography.bodySmall, color = Palette.ElectricBlue,
                 )
             }
+            }
+            Spacer(Modifier.width(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconAction(Icons.Filled.Refresh, stringResource(R.string.action_refresh), onRefresh)
                 IconAction(Icons.Filled.Edit, stringResource(R.string.action_edit), onEdit)
@@ -316,15 +329,15 @@ fun EditPlaylistScreen(onDone: () -> Unit, viewModel: EditPlaylistViewModel = hi
         }
         Spacer(Modifier.height(20.dp))
         Column(Modifier.widthIn(max = 720.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            OutlinedTextField(state.name, { v -> viewModel.update { copy(name = v) } }, label = { Text(stringResource(R.string.playlist_name)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(state.name, { v -> viewModel.update { copy(name = v) } }, label = { Text(stringResource(R.string.playlist_name)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField())
             if (state.type == PlaylistType.M3U) {
-                OutlinedTextField(state.url, { v -> viewModel.update { copy(url = v) } }, label = { Text(stringResource(R.string.playlist_url)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
+                OutlinedTextField(state.url, { v -> viewModel.update { copy(url = v) } }, label = { Text(stringResource(R.string.playlist_url)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
                 GlowButton(stringResource(R.string.playlist_pick_file), { filePicker.launch(arrayOf("*/*")) }, icon = Icons.Filled.FolderOpen, primary = false)
-                OutlinedTextField(state.epgUrl, { v -> viewModel.update { copy(epgUrl = v) } }, label = { Text(stringResource(R.string.playlist_epg_url)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
+                OutlinedTextField(state.epgUrl, { v -> viewModel.update { copy(epgUrl = v) } }, label = { Text(stringResource(R.string.playlist_epg_url)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
             } else {
-                OutlinedTextField(state.url, { v -> viewModel.update { copy(url = v) } }, label = { Text(stringResource(R.string.playlist_server)) }, placeholder = { Text("http://host:port") }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
-                OutlinedTextField(state.username, { v -> viewModel.update { copy(username = v) } }, label = { Text(stringResource(R.string.playlist_username)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(state.password, { v -> viewModel.update { copy(password = v) } }, label = { Text(stringResource(R.string.playlist_password)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+                OutlinedTextField(state.url, { v -> viewModel.update { copy(url = v) } }, label = { Text(stringResource(R.string.playlist_server)) }, placeholder = { Text("http://host:port") }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
+                OutlinedTextField(state.username, { v -> viewModel.update { copy(username = v) } }, label = { Text(stringResource(R.string.playlist_username)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField())
+                OutlinedTextField(state.password, { v -> viewModel.update { copy(password = v) } }, label = { Text(stringResource(R.string.playlist_password)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(), visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
             }
         }
         if (state.error != null) {

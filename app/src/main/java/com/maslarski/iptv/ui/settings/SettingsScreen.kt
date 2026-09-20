@@ -72,6 +72,7 @@ import com.maslarski.iptv.ui.playlists.PlaylistRow
 import com.maslarski.iptv.ui.components.Pill
 import com.maslarski.iptv.ui.components.PinDialog
 import com.maslarski.iptv.ui.components.SectionHeader
+import com.maslarski.iptv.ui.components.dpadTextField
 import com.maslarski.iptv.ui.components.focusGlow
 import com.maslarski.iptv.ui.components.rememberInteractionSource
 import com.maslarski.iptv.ui.theme.Palette
@@ -390,7 +391,7 @@ private fun TmdbKeyField(saved: String, onSave: (String) -> Unit) {
         OutlinedTextField(
             value = draft,
             onValueChange = { draft = it },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().dpadTextField(),
             singleLine = true,
             label = { Text(stringResource(R.string.settings_tmdb_key)) },
             visualTransformation = PasswordVisualTransformation(),
