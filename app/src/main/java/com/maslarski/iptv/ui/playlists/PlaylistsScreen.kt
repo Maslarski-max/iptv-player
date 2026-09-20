@@ -50,6 +50,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -314,6 +316,7 @@ fun EditPlaylistScreen(onDone: () -> Unit, viewModel: EditPlaylistViewModel = hi
         }
     }
     val colors = fieldColors()
+    val saveFocus = remember { FocusRequester() }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 48.dp, vertical = 24.dp),
@@ -333,11 +336,11 @@ fun EditPlaylistScreen(onDone: () -> Unit, viewModel: EditPlaylistViewModel = hi
             if (state.type == PlaylistType.M3U) {
                 OutlinedTextField(state.url, { v -> viewModel.update { copy(url = v) } }, label = { Text(stringResource(R.string.playlist_url)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
                 GlowButton(stringResource(R.string.playlist_pick_file), { filePicker.launch(arrayOf("*/*")) }, icon = Icons.Filled.FolderOpen, primary = false)
-                OutlinedTextField(state.epgUrl, { v -> viewModel.update { copy(epgUrl = v) } }, label = { Text(stringResource(R.string.playlist_epg_url)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
+                OutlinedTextField(state.epgUrl, { v -> viewModel.update { copy(epgUrl = v) } }, label = { Text(stringResource(R.string.playlist_epg_url)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(saveFocus), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
             } else {
                 OutlinedTextField(state.url, { v -> viewModel.update { copy(url = v) } }, label = { Text(stringResource(R.string.playlist_server)) }, placeholder = { Text("http://host:port") }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
                 OutlinedTextField(state.username, { v -> viewModel.update { copy(username = v) } }, label = { Text(stringResource(R.string.playlist_username)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField())
-                OutlinedTextField(state.password, { v -> viewModel.update { copy(password = v) } }, label = { Text(stringResource(R.string.playlist_password)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(), visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+                OutlinedTextField(state.password, { v -> viewModel.update { copy(password = v) } }, label = { Text(stringResource(R.string.playlist_password)) }, singleLine = true, colors = colors, modifier = Modifier.fillMaxWidth().dpadTextField(saveFocus), visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
             }
         }
         if (state.error != null) {
@@ -347,7 +350,7 @@ fun EditPlaylistScreen(onDone: () -> Unit, viewModel: EditPlaylistViewModel = hi
         Spacer(Modifier.height(24.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (state.isValid && !state.saving) {
-                GlowButton(stringResource(R.string.action_save), viewModel::save, icon = Icons.Filled.Check)
+                GlowButton(stringResource(R.string.action_save), viewModel::save, icon = Icons.Filled.Check, modifier = Modifier.focusRequester(saveFocus))
             }
             GlowButton(stringResource(R.string.action_cancel), onDone, primary = false)
         }

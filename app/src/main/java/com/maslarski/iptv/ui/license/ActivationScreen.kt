@@ -33,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -110,6 +112,7 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
     val license by viewModel.state.collectAsStateWithLifecycle()
     val result by viewModel.result.collectAsStateWithLifecycle()
     var key by remember { mutableStateOf("") }
+    val activateFocus = remember { FocusRequester() }
     var selected by remember { mutableStateOf(PlanOffers.first { it.highlight }.plan) }
     val dateFormat = remember { DateFormat.getDateInstance(DateFormat.LONG) }
 
@@ -164,7 +167,7 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
                 OutlinedTextField(
                     value = key,
                     onValueChange = { key = it.uppercase(); viewModel.clearResult() },
-                    modifier = Modifier.fillMaxWidth().dpadTextField(),
+                    modifier = Modifier.fillMaxWidth().dpadTextField(activateFocus),
                     singleLine = true,
                     label = { Text(stringResource(R.string.activation_key)) },
                     placeholder = { Text("${selected.code}-XXXX-XXXX-XXXX", color = Palette.Muted) },
@@ -185,7 +188,7 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
                 )
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    GlowButton(stringResource(R.string.activation_activate), { viewModel.activate(key) }, icon = Icons.Filled.CheckCircle)
+                    GlowButton(stringResource(R.string.activation_activate), { viewModel.activate(key) }, icon = Icons.Filled.CheckCircle, modifier = Modifier.focusRequester(activateFocus))
                     GlowButton(
                         stringResource(if (result is ActivationResult.Success || current?.isUnlocked == true) R.string.action_done else R.string.account_details_open),
                         onDone,

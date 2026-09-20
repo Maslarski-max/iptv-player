@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -95,15 +96,18 @@ fun Modifier.dpadFocusable(interactionSource: MutableInteractionSource): Modifie
 
 /**
  * Lets D-pad Up/Down leave a single-line text field (Compose text fields otherwise swallow them),
- * Enter/OK keeps its default behaviour (opens the on-screen keyboard).
+ * [down] names the primary action to land on instead of the nearest button. Enter/OK keeps its
+ * default behaviour (opens the on-screen keyboard).
  */
 @Composable
-fun Modifier.dpadTextField(): Modifier {
+fun Modifier.dpadTextField(down: FocusRequester? = null): Modifier {
     val focusManager = LocalFocusManager.current
     return onPreviewKeyEvent { event ->
         if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
         when (event.key) {
-            Key.DirectionDown -> focusManager.moveFocus(FocusDirection.Down)
+            Key.DirectionDown ->
+                (down != null && runCatching { down.requestFocus(); true }.getOrDefault(false)) ||
+                    focusManager.moveFocus(FocusDirection.Down)
             Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
             else -> false
         }
