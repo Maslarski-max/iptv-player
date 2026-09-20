@@ -45,8 +45,12 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.activity.compose.LocalActivity
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +82,7 @@ import com.maslarski.iptv.ui.favorites.FavoritesScreen
 import com.maslarski.iptv.ui.guide.GuideScreen
 import com.maslarski.iptv.ui.home.Featured
 import com.maslarski.iptv.ui.home.HomeScreen
+import com.maslarski.iptv.ui.license.ActivationScreen
 import com.maslarski.iptv.ui.navigation.Route
 import com.maslarski.iptv.ui.player.PlayerScreen
 import com.maslarski.iptv.ui.playlists.EditPlaylistScreen
@@ -110,6 +115,41 @@ fun IptvApp() {
     val isPlayer = destination?.hasRoute<Route.Player>() == true
     val showNav = !isPlayer && NavItems.any { item -> destination?.hasRoute(item.route::class) == true }
 
+    val app: AppViewModel = hiltViewModel()
+    val license by app.license.collectAsStateWithLifecycle()
+    val pendingPlay by app.pendingPlay.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    // Settings, playlist management and the activation screen stay reachable after the trial ends.
+    val gateExempt = destination == null ||
+        destination.hasRoute<Route.Settings>() || destination.hasRoute<Route.Activation>() ||
+        destination.hasRoute<Route.Playlists>() || destination.hasRoute<Route.EditPlaylist>()
+    val locked = license?.isUnlocked == false && !gateExempt
+
+    LaunchedEffect(Unit) { app.tickReminders() }
+    LaunchedEffect(pendingPlay, license) {
+        val request = pendingPlay ?: return@LaunchedEffect
+        if (license == null) return@LaunchedEffect
+        app.consumePendingPlay()
+        if (license?.isUnlocked == true) {
+            nav.navigate(Route.Player(request.playlistId, request.channelId, ContentType.LIVE.name, request.categoryId, request.favoritesOnly)) {
+                popUpTo<Route.Player> { inclusive = true }
+            }
+        }
+    }
+    val switchedTo = stringResource(R.string.reminder_switched)
+    LaunchedEffect(Unit) {
+        app.firedReminders.collect { r ->
+            if (r.autoSwitch && license?.isUnlocked == true) {
+                nav.navigate(Route.Player(r.playlistId, r.channelId, ContentType.LIVE.name, r.categoryId)) {
+                    popUpTo<Route.Player> { inclusive = true }
+                }
+                Toast.makeText(context, "$switchedTo ${r.channelName}", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, "${r.programTitle} · ${r.channelName}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     fun navigateTop(route: Route) {
         nav.navigate(route) {
             popUpTo(Route.Home) { saveState = true }
@@ -122,6 +162,11 @@ fun IptvApp() {
         val content: @Composable (Modifier) -> Unit = { modifier ->
             Box(modifier.then(if (isPlayer) Modifier else Modifier.windowInsetsPadding(WindowInsets.safeDrawing))) {
                 AppNavHost(nav, isCompact)
+                if (locked) {
+                    Box(Modifier.fillMaxSize().background(Palette.Background).zIndex(2f)) {
+                        ActivationScreen(onDone = { navigateTop(Route.Settings) })
+                    }
+                }
             }
         }
         if (isCompact) {
@@ -146,6 +191,10 @@ fun IptvApp() {
 private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
     val play: (MediaItem) -> Unit = { item ->
         nav.navigate(Route.Player(item.playlistId, item.id, item.type.name, item.categoryId))
+    }
+    // Live channels started from Favorites zap only within the favorites list.
+    val playFavorite: (MediaItem) -> Unit = { item ->
+        nav.navigate(Route.Player(item.playlistId, item.id, item.type.name, item.categoryId, favoritesOnly = item.type == ContentType.LIVE))
     }
     val openDetails: (MediaItem) -> Unit = { item ->
         when (item.type) {
@@ -189,8 +238,15 @@ private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
             GuideScreen(onPlayChannel = { c -> nav.navigate(Route.Player(c.playlistId, c.id, ContentType.LIVE.name, c.categoryId)) })
         }
         composable<Route.Search> { SearchScreen(onPlay = play, onOpenDetails = openDetails) }
-        composable<Route.Favorites> { FavoritesScreen(onPlay = play, onOpenDetails = openDetails) }
-        composable<Route.Settings> { SettingsScreen(onManagePlaylists = { nav.navigate(Route.Playlists) }) }
+        composable<Route.Favorites> { FavoritesScreen(onPlay = playFavorite, onOpenDetails = openDetails) }
+        composable<Route.Settings> {
+            SettingsScreen(
+                onAddPlaylist = { nav.navigate(Route.EditPlaylist()) },
+                onEditPlaylist = { nav.navigate(Route.EditPlaylist(it)) },
+                onActivate = { nav.navigate(Route.Activation) },
+            )
+        }
+        composable<Route.Activation> { ActivationScreen(onDone = { nav.popBackStack() }) }
         composable<Route.Playlists> {
             PlaylistsScreen(onAdd = { nav.navigate(Route.EditPlaylist()) }, onEdit = { nav.navigate(Route.EditPlaylist(it)) })
         }

@@ -10,3 +10,4 @@
 /app/build
 *.apk
 *.aab
+/app/google-services.json

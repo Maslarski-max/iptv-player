@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -27,15 +28,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
@@ -78,8 +87,10 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.maslarski.iptv.R
 import com.maslarski.iptv.data.settings.AspectRatioMode
+import com.maslarski.iptv.domain.model.Channel
 import com.maslarski.iptv.ui.components.Pill
 import com.maslarski.iptv.ui.components.focusGlow
+import com.maslarski.iptv.ui.components.rememberFocusState
 import com.maslarski.iptv.ui.components.rememberInteractionSource
 import com.maslarski.iptv.ui.settings.label
 import com.maslarski.iptv.ui.theme.Palette
@@ -89,7 +100,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private enum class Panel { NONE, AUDIO, SUBTITLES }
+private enum class Panel { NONE, AUDIO, SUBTITLES, CHANNELS, SETTINGS }
 
 @UnstableApi
 @Composable
@@ -105,7 +116,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
 
     LaunchedEffect(lastInteraction, state.isPlaying, panel) {
         if (panel != Panel.NONE) return@LaunchedEffect
-        delay(4_000)
+        delay(OSD_TIMEOUT_MS)
         if (state.isPlaying) controlsVisible = false
     }
     LaunchedEffect(controlsVisible) { if (controlsVisible) playFocus.requestFocus() else rootFocus.requestFocus() }
@@ -140,16 +151,27 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                     KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP -> { viewModel.channelUp(); true }
                     KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN -> { viewModel.channelDown(); true }
                     KeyEvent.KEYCODE_CAPTIONS -> { panel = Panel.SUBTITLES; true }
+                    KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { panel = Panel.SETTINGS; true }
+                    KeyEvent.KEYCODE_GUIDE, KeyEvent.KEYCODE_TV -> { if (state.isLive) panel = Panel.CHANNELS; state.isLive }
                     else -> when (event.key) {
-                        Key.DirectionUp -> if (!controlsVisible && state.isLive) { viewModel.channelUp(); true } else false
-                        Key.DirectionDown -> if (!controlsVisible && state.isLive) { viewModel.channelDown(); true } else false
-                        Key.DirectionLeft -> if (!controlsVisible && !state.isLive) { viewModel.seekBack(); true } else false
-                        Key.DirectionRight -> if (!controlsVisible && !state.isLive) { viewModel.seekForward(); true } else false
-                        Key.DirectionCenter, Key.Enter -> if (!controlsVisible) { poke(); true } else false
+                        Key.DirectionUp -> if (!controlsVisible && panel == Panel.NONE && state.isLive) { viewModel.channelUp(); true } else false
+                        Key.DirectionDown -> if (!controlsVisible && panel == Panel.NONE && state.isLive) { viewModel.channelDown(); true } else false
+                        Key.DirectionLeft -> when {
+                            controlsVisible || panel != Panel.NONE -> false
+                            state.isLive -> { panel = Panel.CHANNELS; true }
+                            else -> { viewModel.seekBack(); true }
+                        }
+                        Key.DirectionRight -> when {
+                            controlsVisible || panel != Panel.NONE -> false
+                            state.isLive -> { panel = Panel.SETTINGS; true }
+                            else -> { viewModel.seekForward(); true }
+                        }
+                        Key.DirectionCenter, Key.Enter -> if (!controlsVisible && panel == Panel.NONE) { poke(); true } else false
                         else -> false
                     }
                 }
-                if (handled) poke()
+                // Any remote interaction (including D-pad moves between OSD buttons) restarts the auto-hide countdown.
+                if (panel == Panel.NONE && (handled || controlsVisible)) poke()
                 handled
             }
             .clickable(interactionSource = null, indication = null) { if (controlsVisible && state.isPlaying) controlsVisible = false else poke() },
@@ -212,6 +234,8 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 onAudio = { panel = Panel.AUDIO; poke() },
                 onSubtitles = { panel = Panel.SUBTITLES; poke() },
                 onNext = { if (state.isLive) viewModel.channelUp() else viewModel.playNextEpisode(); poke() },
+                onChannels = { panel = Panel.CHANNELS; poke() },
+                onSettings = { panel = Panel.SETTINGS; poke() },
             )
         }
 
@@ -238,7 +262,25 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             }
         }
 
-        if (panel != Panel.NONE) {
+        if (panel == Panel.CHANNELS) {
+            ChannelPanel(
+                channels = state.channels,
+                currentId = state.currentChannelId,
+                favoritesOnly = state.favoritesOnly,
+                onSelect = { viewModel.playChannelById(it.id); panel = Panel.NONE; poke() },
+                onDismiss = { panel = Panel.NONE; poke() },
+            )
+        }
+        if (panel == Panel.SETTINGS) {
+            SettingsPanel(
+                state = state,
+                onAudio = { panel = Panel.AUDIO },
+                onSubtitles = { panel = Panel.SUBTITLES },
+                onAspect = { viewModel.setAspect(it) },
+                onDismiss = { panel = Panel.NONE; poke() },
+            )
+        }
+        if (panel == Panel.AUDIO || panel == Panel.SUBTITLES) {
             TrackPanel(
                 title = stringResource(if (panel == Panel.AUDIO) R.string.player_audio else R.string.player_subtitles),
                 options = if (panel == Panel.AUDIO) state.audioTracks else state.subtitleTracks,
@@ -265,19 +307,26 @@ private fun Controls(
     onAudio: () -> Unit,
     onSubtitles: () -> Unit,
     onNext: () -> Unit,
+    onChannels: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().background(Palette.HeroScrim).padding(horizontal = 32.dp, vertical = 24.dp)) {
         if (!state.isLive && state.durationMillis > 0) {
             val fraction = (state.positionMillis.toFloat() / state.durationMillis).coerceIn(0f, 1f)
+            val sliderInteraction = rememberInteractionSource()
+            val sliderFocused by rememberFocusState(sliderInteraction)
+            val accent by animateColorAsState(if (sliderFocused) Palette.Gold else Palette.NeonPurple, label = "timelineAccent")
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(formatTime(state.positionMillis), style = MaterialTheme.typography.labelMedium)
+                Text(formatTime(state.positionMillis), style = MaterialTheme.typography.labelMedium, color = if (sliderFocused) Palette.Gold else Color.Unspecified)
                 Slider(
                     value = fraction,
                     onValueChange = onSeek,
-                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                    colors = SliderDefaults.colors(thumbColor = Palette.NeonPurple, activeTrackColor = Palette.NeonPurple, inactiveTrackColor = Palette.SurfaceHighest),
+                    interactionSource = sliderInteraction,
+                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+                        .focusGlow(sliderInteraction, RoundedCornerShape(50), focusedScale = 1f, borderWidth = 2.dp, glowColor = Palette.Gold, animateScale = false),
+                    colors = SliderDefaults.colors(thumbColor = accent, activeTrackColor = accent, inactiveTrackColor = Palette.SurfaceHighest),
                 )
-                Text(formatTime(state.durationMillis), style = MaterialTheme.typography.labelMedium)
+                Text(formatTime(state.durationMillis), style = MaterialTheme.typography.labelMedium, color = if (sliderFocused) Palette.Gold else Color.Unspecified)
             }
         } else if (state.isLive && state.nowPlaying != null) {
             val p = state.nowPlaying
@@ -307,11 +356,122 @@ private fun Controls(
                 ControlButton(Icons.Filled.SkipNext, stringResource(if (state.isLive) R.string.player_channel_up else R.string.player_next_episode), onNext)
             }
             Spacer(Modifier.width(40.dp))
-            if (state.audioTracks.size > 1) ControlButton(Icons.Filled.Audiotrack, stringResource(R.string.player_audio), onAudio)
-            Spacer(Modifier.width(12.dp))
+            if (state.isLive && state.channels.isNotEmpty()) {
+                ControlButton(Icons.AutoMirrored.Filled.List, stringResource(R.string.player_channel_list), onChannels)
+                Spacer(Modifier.width(12.dp))
+            }
+            if (state.audioTracks.size > 1) {
+                ControlButton(Icons.Filled.Audiotrack, stringResource(R.string.player_audio), onAudio)
+                Spacer(Modifier.width(12.dp))
+            }
             ControlButton(Icons.Filled.Subtitles, stringResource(R.string.player_subtitles), onSubtitles)
             Spacer(Modifier.width(12.dp))
             ControlButton(Icons.Filled.AspectRatio, stringResource(state.aspect.label()), onAspect)
+            Spacer(Modifier.width(12.dp))
+            ControlButton(Icons.Filled.Settings, stringResource(R.string.player_settings), onSettings)
+        }
+    }
+}
+
+/** Semi-transparent channel list over the running stream; Left/Right or Back closes it without stopping playback. */
+@Composable
+private fun ChannelPanel(
+    channels: List<Channel>,
+    currentId: String?,
+    favoritesOnly: Boolean,
+    onSelect: (Channel) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val listState = rememberLazyListState()
+    val currentFocus = remember { FocusRequester() }
+    val currentIndex = channels.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
+    LaunchedEffect(currentId) {
+        if (channels.isNotEmpty()) listState.scrollToItem((currentIndex - 3).coerceAtLeast(0))
+        runCatching { currentFocus.requestFocus() }
+    }
+    Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
+        Column(
+            Modifier.align(Alignment.CenterStart).fillMaxHeight().width(360.dp)
+                .background(Brush.horizontalGradient(listOf(Palette.Background.copy(alpha = 0.92f), Palette.Background.copy(alpha = 0.72f), Color.Transparent)))
+                .padding(start = 24.dp, end = 40.dp, top = 28.dp, bottom = 28.dp)
+                .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { onDismiss(); true } else false },
+        ) {
+            Text(
+                stringResource(if (favoritesOnly) R.string.nav_favorites else R.string.player_channel_list),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(stringResource(R.string.items_count, channels.size), style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+            Spacer(Modifier.height(12.dp))
+            LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxHeight()) {
+                itemsIndexed(channels, key = { _, c -> c.id }) { index, channel ->
+                    val interaction = rememberInteractionSource()
+                    val focused by rememberFocusState(interaction)
+                    val selected = channel.id == currentId
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .let { if (index == currentIndex) it.focusRequester(currentFocus) else it }
+                            .focusGlow(interaction, RoundedCornerShape(10.dp), focusedScale = 1.02f, borderWidth = 2.dp, glowColor = Palette.ElectricBlue)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(when { focused -> Palette.NeonPurple.copy(alpha = 0.85f); selected -> Color.White.copy(alpha = 0.14f); else -> Color.Transparent })
+                            .clickable(interactionSource = interaction, indication = null) { onSelect(channel) }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            channel.channelNumber?.toString() ?: "${index + 1}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (selected && !focused) Palette.ElectricBlue else Color.White,
+                            modifier = Modifier.width(40.dp),
+                        )
+                        Text(channel.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Semi-transparent quick settings (audio, subtitles, aspect ratio) that keep the stream playing behind. */
+@Composable
+private fun SettingsPanel(
+    state: PlayerUiState,
+    onAudio: () -> Unit,
+    onSubtitles: () -> Unit,
+    onAspect: (AspectRatioMode) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+    Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
+        Column(
+            Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(380.dp)
+                .background(Brush.horizontalGradient(listOf(Color.Transparent, Palette.Background.copy(alpha = 0.72f), Palette.Background.copy(alpha = 0.92f))))
+                .padding(start = 40.dp, end = 24.dp, top = 28.dp, bottom = 28.dp)
+                .verticalScroll(rememberScrollState())
+                .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionLeft) { onDismiss(); true } else false },
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(stringResource(R.string.player_settings), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.player_audio), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+            Pill(
+                state.audioTracks.firstOrNull { it.selected }?.label ?: stringResource(R.string.player_track_default),
+                selected = false,
+                modifier = Modifier.fillMaxWidth().focusRequester(first),
+                onClick = onAudio,
+            )
+            Text(stringResource(R.string.player_subtitles), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+            Pill(
+                if (!state.subtitlesEnabled) stringResource(R.string.player_subtitles_off)
+                else state.subtitleTracks.firstOrNull { it.selected }?.label ?: stringResource(R.string.player_track_default),
+                selected = false,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onSubtitles,
+            )
+            Text(stringResource(R.string.player_aspect_ratio), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+            AspectRatioMode.entries.forEach { mode ->
+                Pill(stringResource(mode.label()), selected = mode == state.aspect, modifier = Modifier.fillMaxWidth()) { onAspect(mode) }
+            }
         }
     }
 }
@@ -349,10 +509,10 @@ private fun TrackPanel(
 ) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { first.requestFocus() }
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)).clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)).clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
         Column(
             Modifier.align(Alignment.CenterEnd).widthIn(min = 280.dp, max = 400.dp).padding(24.dp)
-                .clip(RoundedCornerShape(20.dp)).background(Palette.SurfaceElevated).padding(20.dp),
+                .clip(RoundedCornerShape(20.dp)).background(Palette.SurfaceElevated.copy(alpha = 0.9f)).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge)
@@ -365,6 +525,8 @@ private fun TrackPanel(
         }
     }
 }
+
+private const val OSD_TIMEOUT_MS = 5_000L
 
 private fun formatTime(ms: Long): String {
     val total = ms / 1000

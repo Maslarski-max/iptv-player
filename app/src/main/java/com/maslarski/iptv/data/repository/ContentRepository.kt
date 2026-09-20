@@ -70,6 +70,16 @@ class ContentRepository @Inject constructor(
         }
     }
 
+    /** Favorite live channels in the order they were added (matches the Favorites screen). */
+    fun favoriteChannels(playlistId: Long): Flow<List<Channel>> =
+        db.favoriteDao().observeByType(playlistId, ContentType.LIVE).flatMapLatest { favs ->
+            if (favs.isEmpty()) return@flatMapLatest flowOf(emptyList())
+            val order = favs.withIndex().associate { (i, f) -> f.contentId to i }
+            db.channelDao().observeByIds(playlistId, favs.map { it.contentId }).map { list ->
+                list.sortedBy { order[it.id] ?: Int.MAX_VALUE }.map { it.toDomain(isFavorite = true) }
+            }
+        }
+
     fun featuredChannels(playlistId: Long, limit: Int = 12): Flow<List<Channel>> =
         db.channelDao().observeFirst(playlistId, limit).map { list -> list.map { it.toDomain() } }
 

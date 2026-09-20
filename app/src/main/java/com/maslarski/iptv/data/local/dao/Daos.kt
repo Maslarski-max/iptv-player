@@ -14,6 +14,7 @@ import com.maslarski.iptv.data.local.entity.EpisodeEntity
 import com.maslarski.iptv.data.local.entity.FavoriteEntity
 import com.maslarski.iptv.data.local.entity.MovieEntity
 import com.maslarski.iptv.data.local.entity.PlaylistEntity
+import com.maslarski.iptv.data.local.entity.ReminderEntity
 import com.maslarski.iptv.data.local.entity.SeriesEntity
 import com.maslarski.iptv.data.local.entity.TmdbMetadataEntity
 import com.maslarski.iptv.data.local.entity.WatchProgressEntity
@@ -288,6 +289,33 @@ interface FavoriteDao {
     suspend fun delete(contentId: String, type: ContentType, playlistId: Long)
 
     @Query("DELETE FROM favorites WHERE playlistId = :playlistId")
+    suspend fun deleteFor(playlistId: Long)
+}
+
+@Dao
+interface ReminderDao {
+    @Query("SELECT * FROM reminders WHERE endMillis > :now ORDER BY startMillis")
+    fun observeUpcoming(now: Long): Flow<List<ReminderEntity>>
+
+    @Query("SELECT * FROM reminders WHERE endMillis > :now ORDER BY startMillis")
+    suspend fun upcoming(now: Long): List<ReminderEntity>
+
+    @Query("SELECT * FROM reminders WHERE id = :id")
+    suspend fun getById(id: Long): ReminderEntity?
+
+    @Query("SELECT * FROM reminders WHERE epgChannelId = :epgChannelId AND startMillis = :startMillis LIMIT 1")
+    suspend fun find(epgChannelId: String, startMillis: Long): ReminderEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(reminder: ReminderEntity): Long
+
+    @Query("DELETE FROM reminders WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("DELETE FROM reminders WHERE endMillis <= :now")
+    suspend fun deleteExpired(now: Long)
+
+    @Query("DELETE FROM reminders WHERE playlistId = :playlistId")
     suspend fun deleteFor(playlistId: Long)
 }
 

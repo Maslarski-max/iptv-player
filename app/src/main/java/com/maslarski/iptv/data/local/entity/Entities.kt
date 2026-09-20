@@ -134,6 +134,20 @@ data class EpgProgramEntity(
     val category: String?,
 )
 
+@Entity(tableName = "reminders", indices = [Index("startMillis")])
+data class ReminderEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val playlistId: Long,
+    val channelId: String,
+    val channelName: String,
+    val categoryId: String?,
+    val epgChannelId: String,
+    val programTitle: String,
+    val startMillis: Long,
+    val endMillis: Long,
+    val autoSwitch: Boolean,
+)
+
 @Entity(tableName = "favorites", primaryKeys = ["contentId", "contentType", "playlistId"])
 data class FavoriteEntity(
     val contentId: String,

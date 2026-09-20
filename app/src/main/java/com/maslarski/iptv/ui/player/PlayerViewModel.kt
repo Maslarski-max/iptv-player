@@ -23,6 +23,7 @@ import androidx.navigation.toRoute
 import com.maslarski.iptv.data.repository.ContentRepository
 import com.maslarski.iptv.data.repository.PlaylistRepository
 import com.maslarski.iptv.data.settings.AspectRatioMode
+import com.maslarski.iptv.data.settings.LastChannel
 import com.maslarski.iptv.data.settings.SettingsRepository
 import com.maslarski.iptv.domain.model.Channel
 import com.maslarski.iptv.domain.model.ContentType
@@ -66,6 +67,9 @@ data class PlayerUiState(
     val nextProgram: EpgProgram? = null,
     val channelNumber: Int? = null,
     val hasNextEpisode: Boolean = false,
+    val channels: List<Channel> = emptyList(),
+    val currentChannelId: String? = null,
+    val favoritesOnly: Boolean = false,
 )
 
 @UnstableApi
@@ -80,7 +84,9 @@ class PlayerViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val route = savedState.toRoute<Route.Player>()
-    private val _state = MutableStateFlow(PlayerUiState(contentType = ContentType.valueOf(route.contentType)))
+    private val _state = MutableStateFlow(
+        PlayerUiState(contentType = ContentType.valueOf(route.contentType), favoritesOnly = route.favoritesOnly),
+    )
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private val trackSelector = DefaultTrackSelector(context).apply {
@@ -160,11 +166,21 @@ class PlayerViewModel @Inject constructor(
     // ------------------------------------------------------------------ start
 
     private suspend fun startLive() {
-        val channels = content.channels(route.playlistId, route.categoryId).first()
+        val source = if (route.favoritesOnly) content.favoriteChannels(route.playlistId)
+        else content.channels(route.playlistId, route.categoryId)
+        val channels = source.first()
         channelList = channels
         channelIndex = channels.indexOfFirst { it.id == route.contentId }
+        _state.update { it.copy(channels = channels) }
         val channel = channels.getOrNull(channelIndex) ?: content.channel(route.playlistId, route.contentId) ?: return
         playChannel(channel)
+    }
+
+    fun playChannelById(id: String) {
+        val index = channelList.indexOfFirst { it.id == id }
+        if (index < 0) return
+        channelIndex = index
+        playChannel(channelList[index])
     }
 
     private fun playChannel(channel: Channel) {
@@ -173,9 +189,13 @@ class PlayerViewModel @Inject constructor(
             it.copy(
                 title = channel.name, subtitle = channel.categoryName, isLive = true,
                 channelNumber = channel.channelNumber, nowPlaying = null, nextProgram = null, error = null,
+                currentChannelId = channel.id,
             )
         }
         prepare(channel.streamUrl, live = true)
+        viewModelScope.launch {
+            settings.setLastChannel(LastChannel(route.playlistId, channel.id, route.categoryId, route.favoritesOnly))
+        }
         epgJob?.cancel()
         val epgId = channel.epgChannelId ?: return
         epgJob = viewModelScope.launch {
@@ -313,9 +333,12 @@ class PlayerViewModel @Inject constructor(
 
     fun cycleAspect() {
         val entries = AspectRatioMode.entries
-        val next = entries[(entries.indexOf(_state.value.aspect) + 1) % entries.size]
-        _state.update { it.copy(aspect = next) }
-        viewModelScope.launch { settings.setAspectRatio(next) }
+        setAspect(entries[(entries.indexOf(_state.value.aspect) + 1) % entries.size])
+    }
+
+    fun setAspect(mode: AspectRatioMode) {
+        _state.update { it.copy(aspect = mode) }
+        viewModelScope.launch { settings.setAspectRatio(mode) }
     }
 
     fun playNextEpisode() {

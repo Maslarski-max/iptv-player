@@ -70,6 +70,7 @@ import com.maslarski.iptv.data.sync.SyncScheduler
 import com.maslarski.iptv.domain.model.Playlist
 import com.maslarski.iptv.domain.model.PlaylistType
 import com.maslarski.iptv.domain.model.SyncStatus
+import com.maslarski.iptv.ui.components.ConfirmDialog
 import com.maslarski.iptv.ui.components.EmptyState
 import com.maslarski.iptv.ui.components.GlowButton
 import com.maslarski.iptv.ui.components.Pill
@@ -112,6 +113,10 @@ fun PlaylistsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val list = state.playlists ?: return
+    var pendingDelete by remember { mutableStateOf<Playlist?>(null) }
+    pendingDelete?.let { p ->
+        DeletePlaylistDialog(p, onConfirm = { viewModel.delete(p.id); pendingDelete = null }, onDismiss = { pendingDelete = null })
+    }
     Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.playlists_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
@@ -130,7 +135,7 @@ fun PlaylistsScreen(
                         onActivate = { viewModel.activate(p.id) },
                         onEdit = { onEdit(p.id) },
                         onRefresh = { viewModel.refresh(p) },
-                        onDelete = { viewModel.delete(p.id) },
+                        onDelete = { pendingDelete = p },
                     )
                 }
             }
@@ -139,7 +144,18 @@ fun PlaylistsScreen(
 }
 
 @Composable
-private fun PlaylistRow(
+fun DeletePlaylistDialog(playlist: Playlist, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    ConfirmDialog(
+        title = stringResource(R.string.playlist_delete_title, playlist.name),
+        body = stringResource(R.string.playlist_delete_body),
+        confirmText = stringResource(R.string.action_delete),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+fun PlaylistRow(
     playlist: Playlist,
     syncing: Boolean,
     syncMessage: String?,

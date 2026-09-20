@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -221,6 +222,7 @@ fun MediaRow(
     cardWidth: Dp = 150.dp,
     aspect: Float = PosterAspect,
     lockedCategoryIds: Set<String> = emptySet(),
+    showFavoriteState: Boolean = false,
     onClick: (MediaItem) -> Unit,
     onLongClick: ((MediaItem) -> Unit)? = null,
 ) {
@@ -237,8 +239,10 @@ fun MediaRow(
                         imageUrl = item.imageUrl,
                         subtitle = item.subtitle,
                         progress = item.progress,
+                        isFavorite = showFavoriteState && item.isFavorite,
                         width = cardWidth,
                         aspect = aspect,
+                        modifier = if (showFavoriteState && !item.isFavorite) Modifier.alpha(0.45f) else Modifier,
                         onClick = { onClick(item) },
                         onLongClick = onLongClick?.let { cb -> { cb(item) } },
                     )

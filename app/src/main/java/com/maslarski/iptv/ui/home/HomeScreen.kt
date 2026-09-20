@@ -1,6 +1,7 @@
 package com.maslarski.iptv.ui.home
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -23,23 +24,35 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -129,16 +142,39 @@ private fun FeaturedBanner(
     syncMessage: String?,
 ) {
     var index by remember(featured.size) { mutableIntStateOf(0) }
-    LaunchedEffect(featured.size) {
-        if (featured.size > 1) {
-            while (true) {
-                delay(8_000)
-                index = (index + 1) % featured.size
-            }
+    var hasFocus by remember { mutableStateOf(false) }
+    var onFirstButton by remember { mutableStateOf(true) }
+    fun step(delta: Int) { if (featured.size > 1) index = ((index + delta) % featured.size + featured.size) % featured.size }
+    // Auto-advance restarts from the last manual/automatic change and pauses while the banner is focused.
+    LaunchedEffect(featured.size, index, hasFocus) {
+        if (featured.size > 1 && !hasFocus) {
+            delay(8_000)
+            step(1)
         }
     }
     val height = if (isCompact) 320.dp else 440.dp
-    Box(Modifier.fillMaxWidth().height(height)) {
+    val borderAlpha by animateFloatAsState(if (hasFocus) 1f else 0f, tween(200), label = "featuredFocus")
+    Box(
+        Modifier.fillMaxWidth().height(height)
+            .onFocusChanged { hasFocus = it.hasFocus }
+            .onPreviewKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown || !hasFocus || featured.size < 2) return@onPreviewKeyEvent false
+                when (e.key) {
+                    // At the first item Left falls through so the side rail stays reachable.
+                    Key.DirectionLeft -> if (onFirstButton && index > 0) { step(-1); true } else false
+                    Key.DirectionRight -> if (!onFirstButton) { step(1); true } else false
+                    Key.MediaNext, Key.ChannelUp -> { step(1); true }
+                    Key.MediaPrevious, Key.ChannelDown -> { step(-1); true }
+                    else -> false
+                }
+            }
+            .drawWithContent {
+                drawContent()
+                if (borderAlpha > 0f) {
+                    drawRect(Palette.FocusGradient, alpha = borderAlpha, style = Stroke(width = 3.dp.toPx()))
+                }
+            },
+    ) {
         val current = featured.getOrNull(index)
         AnimatedContent(
             targetState = current,
@@ -193,10 +229,22 @@ private fun FeaturedBanner(
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (current != null) {
-                    GlowButton(stringResource(R.string.action_watch_now), { onOpen(current) }, icon = Icons.Filled.PlayArrow)
-                    GlowButton(stringResource(R.string.action_details), { onOpen(current) }, icon = Icons.Filled.Info, primary = false)
+                    GlowButton(
+                        stringResource(R.string.action_watch_now), { onOpen(current) }, icon = Icons.Filled.PlayArrow,
+                        modifier = Modifier.onFocusChanged { if (it.isFocused) onFirstButton = true },
+                    )
+                    GlowButton(
+                        stringResource(R.string.action_details), { onOpen(current) }, icon = Icons.Filled.Info, primary = false,
+                        modifier = Modifier.onFocusChanged { if (it.isFocused) onFirstButton = false },
+                    )
+                    if (featured.size > 1 && hasFocus) {
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = if (onFirstButton) Palette.Gold else Palette.Muted)
+                        Text("${index + 1} / ${featured.size}", style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = if (!onFirstButton) Palette.Gold else Palette.Muted)
+                    }
                 }
             }
         }
@@ -209,7 +257,7 @@ private fun FeaturedBanner(
                     Box(
                         Modifier.size(width = if (i == index) 24.dp else 8.dp, height = 8.dp)
                             .clip(CircleShape)
-                            .background(if (i == index) Palette.NeonPurple else Color.White.copy(alpha = 0.35f)),
+                            .background(if (i == index) (if (hasFocus) Palette.Gold else Palette.NeonPurple) else Color.White.copy(alpha = 0.35f)),
                     )
                 }
             }

@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -112,8 +113,10 @@ private fun ContentGrid(
     padding: Dp,
     minCell: Dp,
 ) {
-    Crossfade(targetState = state.selectedCategoryId to state.items, label = "grid") { (_, gridItems) ->
-        Box(Modifier.fillMaxSize()) {
+    // Only a category change swaps the grid; favorite toggles just update the cards in place so focus survives.
+    Crossfade(targetState = state.selectedCategoryId, label = "grid") { categoryId ->
+        val gridItems = state.items
+        Box(Modifier.fillMaxSize().testTag("grid:$categoryId")) {
             if (gridItems.isEmpty()) {
                 EmptyState(stringResource(R.string.empty_section))
             } else {

@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.maslarski.iptv.data.repository.PlaylistRepository
+import com.maslarski.iptv.data.settings.RefreshMode
 import com.maslarski.iptv.data.settings.SettingsRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -55,23 +56,46 @@ class SyncWorker @AssistedInject constructor(
 }
 
 @Singleton
-class SyncScheduler @Inject constructor(@ApplicationContext private val context: Context) {
+class SyncScheduler @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val settings: SettingsRepository,
+) {
 
     private val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
-    fun scheduleOnLaunch() {
-        val launch = OneTimeWorkRequestBuilder<SyncWorker>()
-            .setConstraints(constraints)
-            .setInputData(workDataOf(SyncWorker.KEY_ONLY_IF_STALE to true))
-            .build()
-        WorkManager.getInstance(context).enqueueUniqueWork(SyncWorker.LAUNCH_WORK, ExistingWorkPolicy.KEEP, launch)
+    suspend fun scheduleOnLaunch() {
+        val mode = settings.current().refreshMode
+        if (mode != RefreshMode.MANUAL) {
+            val launch = OneTimeWorkRequestBuilder<SyncWorker>()
+                .setConstraints(constraints)
+                .setInputData(workDataOf(SyncWorker.KEY_ONLY_IF_STALE to true))
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(SyncWorker.LAUNCH_WORK, ExistingWorkPolicy.KEEP, launch)
+        }
+        applyRefreshMode(mode, replace = false)
+    }
 
-        val periodic = PeriodicWorkRequestBuilder<SyncWorker>(12, TimeUnit.HOURS)
+    fun applyRefreshMode(mode: RefreshMode, replace: Boolean = true) {
+        val wm = WorkManager.getInstance(context)
+        val hours = mode.periodHours
+        if (hours == null) {
+            wm.cancelUniqueWork(SyncWorker.PERIODIC_WORK)
+            return
+        }
+        val periodic = PeriodicWorkRequestBuilder<SyncWorker>(hours, TimeUnit.HOURS)
             .setConstraints(constraints)
             .setInputData(workDataOf(SyncWorker.KEY_ONLY_IF_STALE to true))
             .build()
-        WorkManager.getInstance(context)
-            .enqueueUniquePeriodicWork(SyncWorker.PERIODIC_WORK, ExistingPeriodicWorkPolicy.KEEP, periodic)
+        val policy = if (replace) ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE else ExistingPeriodicWorkPolicy.KEEP
+        wm.enqueueUniquePeriodicWork(SyncWorker.PERIODIC_WORK, policy, periodic)
+    }
+
+    fun syncAllNow() {
+        val request = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(constraints)
+            .setInputData(workDataOf(SyncWorker.KEY_ONLY_IF_STALE to false))
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork("sync_all", ExistingWorkPolicy.REPLACE, request)
     }
 
     fun syncNow(playlistId: Long) {

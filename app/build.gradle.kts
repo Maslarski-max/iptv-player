@@ -6,7 +6,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services) apply false
 }
+
+// google-services.json comes from the Firebase console and is git-ignored. Without it the app still
+// builds and runs; Firebase-backed features fall back to local-only behaviour at runtime.
+val hasFirebaseConfig = file("google-services.json").exists()
+if (hasFirebaseConfig) apply(plugin = libs.plugins.google.services.get().pluginId)
 
 // TMDB key is read from local.properties (git-ignored) or the TMDB_API_KEY env var; never committed.
 val tmdbApiKey: String = run {
@@ -31,6 +37,7 @@ android {
         vectorDrawables { useSupportLibrary = true }
 
         buildConfigField("String", "TMDB_API_KEY", "\"$tmdbApiKey\"")
+        buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
     }
 
     buildTypes {
@@ -131,6 +138,11 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.analytics)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -15,7 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -30,7 +35,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
@@ -44,11 +52,23 @@ import com.maslarski.iptv.data.repository.ContentRepository
 import com.maslarski.iptv.data.repository.PlaylistRepository
 import com.maslarski.iptv.data.settings.AppSettings
 import com.maslarski.iptv.data.settings.AspectRatioMode
+import com.maslarski.iptv.data.settings.RefreshMode
 import com.maslarski.iptv.data.settings.SettingsRepository
+import com.maslarski.iptv.data.sync.PlaylistSyncer
+import com.maslarski.iptv.data.sync.SyncScheduler
+import com.maslarski.iptv.domain.license.LicensePlan
+import com.maslarski.iptv.domain.license.LicenseRepository
+import com.maslarski.iptv.domain.license.LicenseState
+import com.maslarski.iptv.domain.license.SubscriptionStatus
 import com.maslarski.iptv.domain.model.Category
 import com.maslarski.iptv.domain.model.ContentType
+import com.maslarski.iptv.domain.model.Playlist
+import com.maslarski.iptv.domain.model.SyncStatus
 import com.maslarski.iptv.domain.parental.ParentalGate
+import com.maslarski.iptv.ui.components.Badge
 import com.maslarski.iptv.ui.components.GlowButton
+import com.maslarski.iptv.ui.playlists.DeletePlaylistDialog
+import com.maslarski.iptv.ui.playlists.PlaylistRow
 import com.maslarski.iptv.ui.components.Pill
 import com.maslarski.iptv.ui.components.PinDialog
 import com.maslarski.iptv.ui.components.SectionHeader
@@ -64,6 +84,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.DateFormat
+import java.util.Date
 import javax.inject.Inject
 
 data class Language(val tag: String, val label: String)
@@ -85,15 +107,21 @@ data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
     val categories: List<Category> = emptyList(),
     val lockedIds: Set<String> = emptySet(),
+    val playlists: List<Playlist> = emptyList(),
+    val sync: SyncStatus = SyncStatus(),
+    val license: LicenseState? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepo: SettingsRepository,
-    playlists: PlaylistRepository,
+    private val playlists: PlaylistRepository,
     private val content: ContentRepository,
     private val gate: ParentalGate,
+    private val syncer: PlaylistSyncer,
+    private val scheduler: SyncScheduler,
+    license: LicenseRepository,
 ) : ViewModel() {
     private val categories = playlists.activePlaylist.flatMapLatest { p ->
         if (p == null) flowOf(emptyList<Category>() to emptySet<String>())
@@ -103,8 +131,10 @@ class SettingsViewModel @Inject constructor(
         ) { l, m, s, locked -> (l + m + s) to locked }
     }
 
-    val state: StateFlow<SettingsUiState> = combine(settingsRepo.settings, categories) { s, (cats, locked) ->
-        SettingsUiState(s, cats, locked)
+    val state: StateFlow<SettingsUiState> = combine(
+        settingsRepo.settings, categories, playlists.playlists, syncer.status, license.state,
+    ) { s, (cats, locked), lists, sync, lic ->
+        SettingsUiState(s, cats, locked, lists, sync, lic)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun setLanguage(tag: String) {
@@ -113,7 +143,15 @@ class SettingsViewModel @Inject constructor(
             AppCompatDelegate.setApplicationLocales(if (tag.isBlank()) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(tag))
         }
     }
-    fun setAutoUpdate(v: Boolean) = viewModelScope.launch { settingsRepo.setAutoUpdate(v) }
+    fun setRefreshMode(mode: RefreshMode) = viewModelScope.launch {
+        settingsRepo.setRefreshMode(mode)
+        scheduler.applyRefreshMode(mode)
+    }
+    fun setLaunchLastChannel(v: Boolean) = viewModelScope.launch { settingsRepo.setLaunchLastChannel(v) }
+    fun refreshAll() = viewModelScope.launch { state.value.playlists.forEach { syncer.sync(it) } }
+    fun refresh(playlist: Playlist) = viewModelScope.launch { syncer.sync(playlist) }
+    fun activatePlaylist(id: Long) = viewModelScope.launch { playlists.setActive(id) }
+    fun deletePlaylist(id: Long) = viewModelScope.launch { playlists.delete(id) }
     fun setHardwareAcceleration(v: Boolean) = viewModelScope.launch { settingsRepo.setHardwareAcceleration(v) }
     fun setAspect(mode: AspectRatioMode) = viewModelScope.launch { settingsRepo.setAspectRatio(mode) }
     fun setPin(pin: String) = viewModelScope.launch { settingsRepo.setPin(pin) }
@@ -133,11 +171,21 @@ class SettingsViewModel @Inject constructor(
 private enum class PinMode { NONE, SET, CONFIRM_REMOVE }
 
 @Composable
-fun SettingsScreen(onManagePlaylists: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onAddPlaylist: () -> Unit,
+    onEditPlaylist: (Long) -> Unit,
+    onActivate: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var pinMode by remember { mutableStateOf(PinMode.NONE) }
     var pinError by remember { mutableStateOf<String?>(null) }
+    var pendingDelete by remember { mutableStateOf<Playlist?>(null) }
     val wrongPin = stringResource(R.string.pin_wrong)
+
+    pendingDelete?.let { p ->
+        DeletePlaylistDialog(p, onConfirm = { viewModel.deletePlaylist(p.id); pendingDelete = null }, onDismiss = { pendingDelete = null })
+    }
 
     when (pinMode) {
         PinMode.SET -> PinDialog(
@@ -161,6 +209,12 @@ fun SettingsScreen(onManagePlaylists: () -> Unit, viewModel: SettingsViewModel =
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp)) {
         item { Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium); Spacer(Modifier.height(16.dp)) }
+
+        item { SectionHeader(stringResource(R.string.settings_account)); Spacer(Modifier.height(8.dp)) }
+        item {
+            state.license?.let { AccountCard(it, onActivate) }
+            Spacer(Modifier.height(28.dp))
+        }
 
         item { SectionHeader(stringResource(R.string.settings_language)); Spacer(Modifier.height(8.dp)) }
         item {
@@ -187,13 +241,44 @@ fun SettingsScreen(onManagePlaylists: () -> Unit, viewModel: SettingsViewModel =
         }
         item {
             ToggleRow(stringResource(R.string.settings_hw_accel), stringResource(R.string.settings_hw_accel_body), state.settings.hardwareAcceleration, viewModel::setHardwareAcceleration)
-            ToggleRow(stringResource(R.string.settings_auto_update), stringResource(R.string.settings_auto_update_body), state.settings.autoUpdateOnLaunch, viewModel::setAutoUpdate)
+            ToggleRow(stringResource(R.string.settings_launch_last), stringResource(R.string.settings_launch_last_body), state.settings.launchLastChannel, viewModel::setLaunchLastChannel)
             Spacer(Modifier.height(28.dp))
         }
 
         item { SectionHeader(stringResource(R.string.settings_playlists)); Spacer(Modifier.height(8.dp)) }
         item {
-            GlowButton(stringResource(R.string.playlists_manage), onManagePlaylists, primary = false)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                GlowButton(stringResource(R.string.action_add_playlist), onAddPlaylist, icon = Icons.Filled.Add)
+                if (state.playlists.isNotEmpty()) {
+                    GlowButton(stringResource(R.string.settings_refresh_now), viewModel::refreshAll, icon = Icons.Filled.Refresh, primary = false)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+        items(state.playlists, key = { "playlist:${it.id}" }) { p ->
+            PlaylistRow(
+                playlist = p,
+                syncing = state.sync.isSyncing && state.sync.playlistId == p.id,
+                syncMessage = state.sync.message,
+                onActivate = { viewModel.activatePlaylist(p.id) },
+                onEdit = { onEditPlaylist(p.id) },
+                onRefresh = { viewModel.refresh(p) },
+                onDelete = { pendingDelete = p },
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+        item {
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.settings_refresh_mode), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+            Spacer(Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(RefreshMode.entries.size) { i ->
+                    val mode = RefreshMode.entries[i]
+                    Pill(stringResource(mode.label()), state.settings.refreshMode == mode) { viewModel.setRefreshMode(mode) }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.settings_refresh_mode_body), style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
             Spacer(Modifier.height(28.dp))
         }
 
@@ -226,6 +311,68 @@ fun SettingsScreen(onManagePlaylists: () -> Unit, viewModel: SettingsViewModel =
                 ToggleRow(c.name, stringResource(c.type.label()), c.id in state.lockedIds) { viewModel.toggleLock(c) }
             }
         }
+    }
+}
+
+@Composable
+private fun AccountCard(license: LicenseState, onActivate: () -> Unit) {
+    val dateFormat = remember { DateFormat.getDateInstance(DateFormat.LONG) }
+    val (statusText, statusColor) = when (license.status) {
+        SubscriptionStatus.ACTIVE -> stringResource(R.string.account_status_active) to Palette.Success
+        SubscriptionStatus.TRIAL -> stringResource(R.string.account_status_trial) to Palette.Gold
+        SubscriptionStatus.EXPIRED -> stringResource(R.string.account_status_expired) to Palette.Danger
+    }
+    val days = license.daysLeft()
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Palette.SurfaceElevated).padding(24.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.account_status), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+                Text(statusText, style = MaterialTheme.typography.headlineSmall, color = statusColor)
+                license.plan?.let { Text(stringResource(it.label()), style = MaterialTheme.typography.bodyMedium, color = Palette.Muted) }
+            }
+            Badge(statusText, color = statusColor.copy(alpha = 0.2f), textColor = statusColor)
+        }
+        Spacer(Modifier.height(16.dp))
+        when {
+            license.isLifetime -> InfoRow(stringResource(R.string.account_expiry), stringResource(R.string.account_lifetime))
+            license.expiresAt != null -> {
+                InfoRow(
+                    stringResource(R.string.account_days_left),
+                    if (license.status == SubscriptionStatus.EXPIRED) stringResource(R.string.account_expired_on)
+                    else pluralStringResource(R.plurals.account_days_left_value, days ?: 0, days ?: 0),
+                )
+                InfoRow(stringResource(R.string.account_expiry), dateFormat.format(Date(license.expiresAt)))
+            }
+        }
+        InfoRow(stringResource(R.string.account_device_id), license.deviceId, mono = true)
+        InfoRow(
+            stringResource(R.string.account_verification),
+            stringResource(if (license.remote) R.string.account_verified_server else R.string.account_verified_local),
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GlowButton(
+                stringResource(if (license.isLifetime) R.string.account_manage else R.string.account_activate),
+                onActivate,
+                icon = Icons.Filled.WorkspacePremium,
+                primary = !license.isLifetime,
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String, mono: Boolean = false) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = Palette.Muted, modifier = Modifier.weight(1f))
+        Text(
+            value,
+            style = if (mono) MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace, letterSpacing = 1.sp)
+            else MaterialTheme.typography.titleMedium,
+            color = if (mono) Palette.ElectricBlue else Palette.OnSurface,
+        )
     }
 }
 
@@ -284,6 +431,21 @@ fun AspectRatioMode.label(): Int = when (this) {
     AspectRatioMode.RATIO_4_3 -> R.string.aspect_4_3
     AspectRatioMode.ZOOM -> R.string.aspect_zoom
     AspectRatioMode.STRETCH -> R.string.aspect_stretch
+}
+
+fun RefreshMode.label(): Int = when (this) {
+    RefreshMode.MANUAL -> R.string.refresh_manual
+    RefreshMode.ON_LAUNCH -> R.string.refresh_on_launch
+    RefreshMode.EVERY_12H -> R.string.refresh_every_12h
+    RefreshMode.EVERY_24H -> R.string.refresh_every_24h
+}
+
+fun LicensePlan.label(): Int = when (this) {
+    LicensePlan.LIFETIME -> R.string.plan_lifetime
+    LicensePlan.MONTHLY -> R.string.plan_monthly
+    LicensePlan.QUARTERLY -> R.string.plan_quarterly
+    LicensePlan.HALF_YEAR -> R.string.plan_half_year
+    LicensePlan.YEARLY -> R.string.plan_yearly
 }
 
 fun ContentType.label(): Int = when (this) {

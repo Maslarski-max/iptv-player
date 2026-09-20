@@ -20,5 +20,7 @@ sealed interface Route {
         val contentId: String,
         val contentType: String,
         val categoryId: String? = null,
+        val favoritesOnly: Boolean = false,
     ) : Route
+    @Serializable data object Activation : Route
 }
