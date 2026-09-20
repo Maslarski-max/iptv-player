@@ -78,6 +78,7 @@ val SupportedLanguages = listOf(
     Language("ar", "العربية"),
     Language("tr", "Türkçe"),
     Language("mk", "Македонски"),
+    Language("sr-Latn", "Srpski / Hrvatski"),
 )
 
 data class SettingsUiState(
