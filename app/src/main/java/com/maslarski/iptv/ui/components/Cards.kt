@@ -292,7 +292,7 @@ fun Pill(
         Text(
             text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (focused) Color.White else if (selected) Palette.OnSurface else Palette.Muted,
+            color = if (focused || selected) Color.White else Palette.OnSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
