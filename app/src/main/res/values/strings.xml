@@ -207,4 +207,8 @@
     <string name="settings_hw_accel_body">Use hardware video decoders when available</string>
     <string name="settings_auto_update_body">Refresh playlists and EPG when the app starts</string>
     <string name="settings_locked_categories">Locked categories</string>
+    <string name="settings_metadata">Artwork &amp; metadata (TMDB)</string>
+    <string name="settings_tmdb_key">TMDB API key</string>
+    <string name="settings_tmdb_body">Enter a free TMDB API key to automatically fetch missing posters, backdrops and synopses for movies and series.</string>
+    <string name="settings_tmdb_body_builtin">A TMDB key is built into this app. Enter your own key below to override it.</string>
 </resources>

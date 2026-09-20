@@ -27,6 +27,7 @@ data class AppSettings(
     val hardwareAcceleration: Boolean = true,
     val aspectRatio: AspectRatioMode = AspectRatioMode.FIT,
     val epgRetentionDays: Int = 7,
+    val tmdbApiKey: String = "",
 ) {
     val isParentalEnabled: Boolean get() = parentalPinHash != null
 }
@@ -41,6 +42,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val HW_ACCEL = booleanPreferencesKey("hw_accel")
         val ASPECT = stringPreferencesKey("aspect")
         val EPG_DAYS = intPreferencesKey("epg_days")
+        val TMDB_KEY = stringPreferencesKey("tmdb_api_key")
     }
 
     val settings: Flow<AppSettings> = context.settingsStore.data.map { p ->
@@ -51,6 +53,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             hardwareAcceleration = p[Keys.HW_ACCEL] ?: true,
             aspectRatio = p[Keys.ASPECT]?.let { runCatching { AspectRatioMode.valueOf(it) }.getOrNull() } ?: AspectRatioMode.FIT,
             epgRetentionDays = p[Keys.EPG_DAYS] ?: 7,
+            tmdbApiKey = p[Keys.TMDB_KEY] ?: "",
         )
     }
 
@@ -61,6 +64,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setHardwareAcceleration(enabled: Boolean) = context.settingsStore.edit { it[Keys.HW_ACCEL] = enabled }
     suspend fun setAspectRatio(mode: AspectRatioMode) = context.settingsStore.edit { it[Keys.ASPECT] = mode.name }
     suspend fun setEpgRetentionDays(days: Int) = context.settingsStore.edit { it[Keys.EPG_DAYS] = days }
+    suspend fun setTmdbApiKey(key: String) = context.settingsStore.edit { it[Keys.TMDB_KEY] = key.trim() }
 
     suspend fun setPin(pin: String?) = context.settingsStore.edit {
         if (pin == null) it.remove(Keys.PIN_HASH) else it[Keys.PIN_HASH] = hash(pin)

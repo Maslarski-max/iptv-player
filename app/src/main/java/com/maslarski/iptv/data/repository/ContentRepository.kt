@@ -38,6 +38,7 @@ class ContentRepository @Inject constructor(
     private val db: IptvDatabase,
     private val xtream: XtreamClient,
     private val playlists: PlaylistRepository,
+    private val enricher: MetadataEnricher,
 ) {
     // ------------------------------------------------------------ categories
 
@@ -110,9 +111,11 @@ class ContentRepository @Inject constructor(
 
     suspend fun refreshMovieDetails(playlistId: Long, id: String) {
         val playlist = playlists.getById(playlistId) ?: return
-        if (playlist.type != PlaylistType.XTREAM) return
-        val existing = db.movieDao().getById(playlistId, id) ?: return
-        runCatching { xtream.movieDetails(playlist, existing) }.onSuccess { db.movieDao().insertAll(listOf(it)) }
+        if (playlist.type == PlaylistType.XTREAM) {
+            val existing = db.movieDao().getById(playlistId, id) ?: return
+            runCatching { xtream.movieDetails(playlist, existing) }.onSuccess { db.movieDao().insertAll(listOf(it)) }
+        }
+        enricher.enrichMovie(playlistId, id)
     }
 
     // ------------------------------------------------------------ series
@@ -143,15 +146,18 @@ class ContentRepository @Inject constructor(
 
     suspend fun refreshSeriesDetails(playlistId: Long, seriesId: String, force: Boolean = false) {
         val playlist = playlists.getById(playlistId) ?: return
-        if (playlist.type != PlaylistType.XTREAM) return
-        val existing = db.seriesDao().getById(playlistId, seriesId) ?: return
-        val stale = existing.detailsFetchedAt?.let { System.currentTimeMillis() - it > 6 * 60 * 60 * 1000L } ?: true
-        if (!stale && !force) return
-        runCatching { xtream.seriesDetails(playlist, existing) }.onSuccess { details ->
-            db.episodeDao().deleteForSeries(playlistId, seriesId)
-            db.episodeDao().insertAll(details.episodes)
-            db.seriesDao().insertAll(listOf(details.series))
+        if (playlist.type == PlaylistType.XTREAM) {
+            val existing = db.seriesDao().getById(playlistId, seriesId) ?: return
+            val stale = existing.detailsFetchedAt?.let { System.currentTimeMillis() - it > 6 * 60 * 60 * 1000L } ?: true
+            if (stale || force) {
+                runCatching { xtream.seriesDetails(playlist, existing) }.onSuccess { details ->
+                    db.episodeDao().deleteForSeries(playlistId, seriesId)
+                    db.episodeDao().insertAll(details.episodes)
+                    db.seriesDao().insertAll(listOf(details.series))
+                }
+            }
         }
+        enricher.enrichSeries(playlistId, seriesId)
     }
 
     suspend fun episode(playlistId: Long, id: String): Episode? = db.episodeDao().getById(playlistId, id)?.toDomain()

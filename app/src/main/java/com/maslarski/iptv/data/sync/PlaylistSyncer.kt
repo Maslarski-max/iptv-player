@@ -16,6 +16,7 @@ import com.maslarski.iptv.data.parser.M3uParser
 import com.maslarski.iptv.data.parser.XmltvEvent
 import com.maslarski.iptv.data.parser.XmltvParser
 import com.maslarski.iptv.data.remote.xtream.XtreamClient
+import com.maslarski.iptv.data.repository.MetadataEnricher
 import com.maslarski.iptv.data.settings.SettingsRepository
 import com.maslarski.iptv.domain.model.ContentType
 import com.maslarski.iptv.domain.model.Playlist
@@ -47,6 +48,7 @@ class PlaylistSyncer @Inject constructor(
     private val xmltvParser: XmltvParser,
     private val xtream: XtreamClient,
     private val settings: SettingsRepository,
+    private val enricher: MetadataEnricher,
 ) {
     private val _status = MutableStateFlow(SyncStatus())
     val status: StateFlow<SyncStatus> = _status.asStateFlow()
@@ -60,6 +62,7 @@ class PlaylistSyncer @Inject constructor(
                     PlaylistType.M3U -> syncM3u(playlist)
                     PlaylistType.XTREAM -> syncXtream(playlist)
                 }
+                enricher.reapplyCached(playlist.id)
                 if (includeEpg) syncEpg(playlist)
                 db.playlistDao().updateSyncStats(
                     id = playlist.id,
@@ -69,6 +72,7 @@ class PlaylistSyncer @Inject constructor(
                     series = db.seriesDao().count(playlist.id),
                 )
                 _status.value = SyncStatus(isSyncing = false, message = "Up to date", progress = 1f)
+                enricher.scheduleSweep(playlist.id)
             }.onFailure { e ->
                 _status.value = SyncStatus(isSyncing = false, error = e.message ?: e::class.simpleName)
             }

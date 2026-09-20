@@ -1,9 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+// TMDB key is read from local.properties (git-ignored) or the TMDB_API_KEY env var; never committed.
+val tmdbApiKey: String = run {
+    val local = rootProject.file("local.properties")
+    val fromFile = if (local.exists()) Properties().apply { local.inputStream().use(::load) }.getProperty("tmdb.apiKey") else null
+    (fromFile ?: System.getenv("TMDB_API_KEY") ?: "").trim()
 }
 
 android {
@@ -20,6 +29,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        buildConfigField("String", "TMDB_API_KEY", "\"$tmdbApiKey\"")
     }
 
     buildTypes {
@@ -37,6 +48,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     androidResources {

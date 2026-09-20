@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -30,12 +31,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.maslarski.iptv.BuildConfig
 import com.maslarski.iptv.R
 import com.maslarski.iptv.data.repository.ContentRepository
 import com.maslarski.iptv.data.repository.PlaylistRepository
@@ -113,6 +116,7 @@ class SettingsViewModel @Inject constructor(
     fun setHardwareAcceleration(v: Boolean) = viewModelScope.launch { settingsRepo.setHardwareAcceleration(v) }
     fun setAspect(mode: AspectRatioMode) = viewModelScope.launch { settingsRepo.setAspectRatio(mode) }
     fun setPin(pin: String) = viewModelScope.launch { settingsRepo.setPin(pin) }
+    fun setTmdbApiKey(key: String) = viewModelScope.launch { settingsRepo.setTmdbApiKey(key) }
 
     fun removePin(currentPin: String, onResult: (Boolean) -> Unit) = viewModelScope.launch {
         val ok = settingsRepo.verifyPin(currentPin)
@@ -192,6 +196,12 @@ fun SettingsScreen(onManagePlaylists: () -> Unit, viewModel: SettingsViewModel =
             Spacer(Modifier.height(28.dp))
         }
 
+        item { SectionHeader(stringResource(R.string.settings_metadata)); Spacer(Modifier.height(8.dp)) }
+        item {
+            TmdbKeyField(state.settings.tmdbApiKey, viewModel::setTmdbApiKey)
+            Spacer(Modifier.height(28.dp))
+        }
+
         item { SectionHeader(stringResource(R.string.settings_parental)); Spacer(Modifier.height(8.dp)) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -215,6 +225,30 @@ fun SettingsScreen(onManagePlaylists: () -> Unit, viewModel: SettingsViewModel =
                 ToggleRow(c.name, stringResource(c.type.label()), c.id in state.lockedIds) { viewModel.toggleLock(c) }
             }
         }
+    }
+}
+
+@Composable
+private fun TmdbKeyField(saved: String, onSave: (String) -> Unit) {
+    var draft by remember(saved) { mutableStateOf(saved) }
+    val hasBuiltIn = BuildConfig.TMDB_API_KEY.isNotBlank()
+    Column {
+        Text(
+            stringResource(if (hasBuiltIn) R.string.settings_tmdb_body_builtin else R.string.settings_tmdb_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = Palette.Muted,
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = draft,
+            onValueChange = { draft = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text(stringResource(R.string.settings_tmdb_key)) },
+            visualTransformation = PasswordVisualTransformation(),
+        )
+        Spacer(Modifier.height(8.dp))
+        GlowButton(stringResource(R.string.action_save), { onSave(draft) }, primary = false)
     }
 }
 

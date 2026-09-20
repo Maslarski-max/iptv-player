@@ -75,6 +75,8 @@ data class MovieEntity(
     val genre: String?,
     val durationSeconds: Long?,
     val addedAt: Long?,
+    val tmdbId: Long? = null,
+    val tmdbCheckedAt: Long? = null,
 )
 
 @Entity(
@@ -96,6 +98,8 @@ data class SeriesEntity(
     val cast: String?,
     val genre: String?,
     val detailsFetchedAt: Long? = null,
+    val tmdbId: Long? = null,
+    val tmdbCheckedAt: Long? = null,
 )
 
 @Entity(
@@ -151,4 +155,30 @@ data class WatchProgressEntity(
     val durationMillis: Long,
     val updatedAt: Long,
     val seriesId: String? = null,
+)
+
+/**
+ * TMDB lookups cached per playlist item. Survives playlist re-syncs (which drop and re-insert
+ * movies/series) so enrichment is re-applied instead of re-fetched.
+ */
+@Entity(
+    tableName = "tmdb_metadata",
+    primaryKeys = ["contentId", "playlistId", "type"],
+    indices = [Index("playlistId", "type")],
+)
+data class TmdbMetadataEntity(
+    val contentId: String,
+    val playlistId: Long,
+    val type: ContentType,
+    val tmdbId: Long?,
+    val posterUrl: String?,
+    val backdropUrl: String?,
+    val synopsis: String?,
+    val releaseYear: String?,
+    val rating: Double?,
+    val genre: String?,
+    val cast: String?,
+    val director: String?,
+    val durationSeconds: Long?,
+    val checkedAt: Long,
 )

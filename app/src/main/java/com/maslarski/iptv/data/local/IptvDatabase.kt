@@ -12,6 +12,7 @@ import com.maslarski.iptv.data.local.dao.FavoriteDao
 import com.maslarski.iptv.data.local.dao.MovieDao
 import com.maslarski.iptv.data.local.dao.PlaylistDao
 import com.maslarski.iptv.data.local.dao.SeriesDao
+import com.maslarski.iptv.data.local.dao.TmdbMetadataDao
 import com.maslarski.iptv.data.local.dao.WatchProgressDao
 import com.maslarski.iptv.data.local.entity.CategoryEntity
 import com.maslarski.iptv.data.local.entity.ChannelEntity
@@ -21,6 +22,7 @@ import com.maslarski.iptv.data.local.entity.FavoriteEntity
 import com.maslarski.iptv.data.local.entity.MovieEntity
 import com.maslarski.iptv.data.local.entity.PlaylistEntity
 import com.maslarski.iptv.data.local.entity.SeriesEntity
+import com.maslarski.iptv.data.local.entity.TmdbMetadataEntity
 import com.maslarski.iptv.data.local.entity.WatchProgressEntity
 import com.maslarski.iptv.domain.model.ContentType
 import com.maslarski.iptv.domain.model.PlaylistType
@@ -43,8 +45,9 @@ class Converters {
         EpgProgramEntity::class,
         FavoriteEntity::class,
         WatchProgressEntity::class,
+        TmdbMetadataEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -58,6 +61,7 @@ abstract class IptvDatabase : RoomDatabase() {
     abstract fun epgDao(): EpgDao
     abstract fun favoriteDao(): FavoriteDao
     abstract fun watchProgressDao(): WatchProgressDao
+    abstract fun tmdbMetadataDao(): TmdbMetadataDao
 
     companion object {
         const val NAME = "iptv.db"

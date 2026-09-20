@@ -112,9 +112,9 @@ private fun ContentGrid(
     padding: Dp,
     minCell: Dp,
 ) {
-    Crossfade(targetState = state.selectedCategoryId, label = "grid") { _ ->
+    Crossfade(targetState = state.selectedCategoryId to state.items, label = "grid") { (_, gridItems) ->
         Box(Modifier.fillMaxSize()) {
-            if (state.items.isEmpty()) {
+            if (gridItems.isEmpty()) {
                 EmptyState(stringResource(R.string.empty_section))
             } else {
                 LazyVerticalGrid(
@@ -124,7 +124,7 @@ private fun ContentGrid(
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(state.items, key = { it.id }) { item ->
+                    items(gridItems, key = { it.id }) { item ->
                         if (type == ContentType.LIVE) {
                             val program = item.subtitle?.let { state.nowPlaying[it] }
                             ChannelCard(

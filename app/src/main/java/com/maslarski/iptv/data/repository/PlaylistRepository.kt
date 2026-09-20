@@ -48,6 +48,7 @@ class PlaylistRepository @Inject constructor(private val db: IptvDatabase) {
         ContentType.entries.forEach { db.categoryDao().deleteFor(id, it) }
         db.favoriteDao().deleteFor(id)
         db.watchProgressDao().deleteFor(id)
+        db.tmdbMetadataDao().deleteFor(id)
         db.playlistDao().delete(id)
         if (wasActive) db.playlistDao().getAll().firstOrNull()?.let { db.playlistDao().setActive(it.id) }
     }
