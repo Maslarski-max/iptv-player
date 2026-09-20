@@ -128,7 +128,7 @@ fun SearchScreen(
         )
         when {
             query.trim().length < 2 -> EmptyState(stringResource(R.string.search_title), body = stringResource(R.string.search_hint), icon = Icons.Filled.Search)
-            state.isEmpty && !state.searching -> EmptyState(stringResource(R.string.search_no_results))
+            state.isEmpty && !state.searching -> EmptyState(stringResource(R.string.search_no_results, state.query))
             else -> LazyColumn(contentPadding = PaddingValues(bottom = 48.dp)) {
                 item { MediaRow(stringResource(R.string.nav_live), state.channels, aspect = LandscapeAspect, cardWidth = 200.dp, onClick = onPlay) }
                 item { MediaRow(stringResource(R.string.nav_movies), state.movies, onClick = onOpenDetails) }

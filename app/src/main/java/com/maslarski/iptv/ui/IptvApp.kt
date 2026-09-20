@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -209,14 +211,15 @@ private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
 @Composable
 private fun SideRail(selected: NavItem?, onSelect: (Route) -> Unit) {
     Column(
-        Modifier.fillMaxHeight().width(96.dp).background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing).padding(vertical = 24.dp).zIndex(1f),
+        Modifier.fillMaxHeight().width(96.dp).background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing)
+            .verticalScroll(rememberScrollState()).padding(vertical = 12.dp).zIndex(1f),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Palette.FocusGradient), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Palette.FocusGradient), contentAlignment = Alignment.Center) {
             Icon(Icons.Filled.LiveTv, null, tint = Color.White)
         }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(8.dp))
         NavItems.forEach { item -> RailItem(item, item == selected) { onSelect(item.route) } }
     }
 }
@@ -232,11 +235,11 @@ private fun RailItem(item: NavItem, selected: Boolean, onClick: () -> Unit) {
             .clip(shape)
             .background(if (focused) Palette.NeonPurple else if (selected) Palette.SurfaceHighest else Color.Transparent)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(item.icon, null, tint = if (focused || selected) Color.White else Palette.Muted, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.height(4.dp))
+        Icon(item.icon, null, tint = if (focused || selected) Color.White else Palette.Muted, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.height(2.dp))
         Text(stringResource(item.label), style = MaterialTheme.typography.labelSmall, color = if (focused || selected) Color.White else Palette.Muted, maxLines = 1)
     }
 }
