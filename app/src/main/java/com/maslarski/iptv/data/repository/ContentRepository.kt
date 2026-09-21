@@ -81,7 +81,9 @@ class ContentRepository @Inject constructor(
         }
 
     fun featuredChannels(playlistId: Long, limit: Int = 12): Flow<List<Channel>> =
-        db.channelDao().observeFirst(playlistId, limit).map { list -> list.map { it.toDomain() } }
+        combine(db.channelDao().observeFirst(playlistId, limit), favoriteIds(playlistId, ContentType.LIVE)) { list, favs ->
+            list.map { it.toDomain(isFavorite = it.id in favs) }
+        }
 
     suspend fun channel(playlistId: Long, id: String): Channel? = db.channelDao().getById(playlistId, id)?.toDomain()
 
@@ -109,7 +111,9 @@ class ContentRepository @Inject constructor(
     }
 
     fun recentMovies(playlistId: Long, limit: Int = 20): Flow<List<Movie>> =
-        db.movieDao().observeRecent(playlistId, limit).map { list -> list.map { it.toDomain() } }
+        combine(db.movieDao().observeRecent(playlistId, limit), favoriteIds(playlistId, ContentType.MOVIE)) { list, favs ->
+            list.map { it.toDomain(isFavorite = it.id in favs) }
+        }
 
     fun topRatedMovies(playlistId: Long, limit: Int = 10): Flow<List<Movie>> =
         db.movieDao().observeTopRated(playlistId, limit).map { list -> list.map { it.toDomain() } }
@@ -139,7 +143,9 @@ class ContentRepository @Inject constructor(
     }
 
     fun recentSeries(playlistId: Long, limit: Int = 20): Flow<List<Series>> =
-        db.seriesDao().observeRecent(playlistId, limit).map { list -> list.map { it.toDomain() } }
+        combine(db.seriesDao().observeRecent(playlistId, limit), favoriteIds(playlistId, ContentType.SERIES)) { list, favs ->
+            list.map { it.toDomain(isFavorite = it.id in favs) }
+        }
 
     fun seriesById(playlistId: Long, id: String): Flow<Series?> = combine(
         db.seriesDao().observeById(playlistId, id),

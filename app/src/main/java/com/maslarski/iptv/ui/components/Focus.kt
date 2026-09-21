@@ -26,7 +26,6 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.NativeKeyEvent
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
@@ -97,24 +96,42 @@ fun Modifier.dpadFocusable(interactionSource: MutableInteractionSource): Modifie
     focusable(interactionSource = interactionSource)
 
 /**
- * Reliable remote-control "long press": fires [onLongPress] once when D-pad Center / Enter is held
- * (first key repeat) and swallows the trailing key-up so the item's normal click does not fire too.
- * Also mapped to the remote Menu / Bookmark keys for a single-press alternative.
+ * Remote-control "long press" state for [dpadLongPress]: after a long press fires, the key-up is
+ * still delivered so the clickable's pressed state resets, and the resulting click is skipped via [click].
  */
+class DpadLongPressState internal constructor() {
+    internal var fired = false
+    internal var suppressClick = false
+
+    /** Wraps a normal click so it is ignored once right after a long press. */
+    fun click(action: () -> Unit): () -> Unit = {
+        if (suppressClick) suppressClick = false else action()
+    }
+}
+
 @Composable
-fun Modifier.dpadLongPress(onLongPress: (() -> Unit)?): Modifier {
+fun rememberDpadLongPressState(): DpadLongPressState = remember { DpadLongPressState() }
+
+/**
+ * Fires [onLongPress] once when D-pad Center / Enter is held (first key repeat). Also mapped to the
+ * remote Menu / Bookmark keys for a single-press alternative.
+ */
+fun Modifier.dpadLongPress(state: DpadLongPressState, onLongPress: (() -> Unit)?): Modifier {
     if (onLongPress == null) return this
-    val fired = remember { mutableStateOf(false) }
     return onPreviewKeyEvent { event ->
         val isSelect = event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
         val isShortcut = event.key == Key.Menu || event.key == Key.Bookmark
         when {
             event.type == KeyEventType.KeyDown && isShortcut -> { onLongPress(); true }
             event.type == KeyEventType.KeyDown && isSelect && (event.nativeKeyEvent as NativeKeyEvent).repeatCount > 0 -> {
-                if (!fired.value) { fired.value = true; onLongPress() }
+                if (!state.fired) { state.fired = true; onLongPress() }
                 true
             }
-            event.type == KeyEventType.KeyUp && isSelect && fired.value -> { fired.value = false; true }
+            event.type == KeyEventType.KeyUp && isSelect && state.fired -> {
+                state.fired = false
+                state.suppressClick = true
+                false
+            }
             else -> false
         }
     }

@@ -69,6 +69,7 @@ fun PosterCard(
     onLongClick: (() -> Unit)? = null,
 ) {
     val interaction = rememberInteractionSource()
+    val longPress = rememberDpadLongPressState()
     val focused by rememberFocusState(interaction)
     Column(modifier = modifier.width(width)) {
         Box(
@@ -78,11 +79,11 @@ fun PosterCard(
                 .focusGlow(interaction, CardShape)
                 .clip(CardShape)
                 .background(Palette.SurfaceElevated)
-                .dpadLongPress(onLongClick)
+                .dpadLongPress(longPress, onLongClick)
                 .combinedClickable(
                     interactionSource = interaction,
                     indication = null,
-                    onClick = onClick,
+                    onClick = longPress.click(onClick),
                     onLongClick = onLongClick,
                 ),
         ) {
@@ -161,14 +162,15 @@ fun ChannelCard(
     onLongClick: (() -> Unit)? = null,
 ) {
     val interaction = rememberInteractionSource()
+    val longPress = rememberDpadLongPressState()
     Column(
         modifier = modifier
             .width(width)
             .focusGlow(interaction, CardShape, focusedScale = 1.05f, glowColor = Palette.ElectricBlue)
             .clip(CardShape)
             .background(Palette.SurfaceElevated)
-            .dpadLongPress(onLongClick)
-            .combinedClickable(interactionSource = interaction, indication = null, onClick = onClick, onLongClick = onLongClick)
+            .dpadLongPress(longPress, onLongClick)
+            .combinedClickable(interactionSource = interaction, indication = null, onClick = longPress.click(onClick), onLongClick = onLongClick)
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -241,7 +243,7 @@ fun MediaRow(
                         imageUrl = item.imageUrl,
                         subtitle = item.subtitle,
                         progress = item.progress,
-                        isFavorite = showFavoriteState && item.isFavorite,
+                        isFavorite = item.isFavorite,
                         width = cardWidth,
                         aspect = aspect,
                         modifier = if (showFavoriteState && !item.isFavorite) Modifier.alpha(0.45f) else Modifier,

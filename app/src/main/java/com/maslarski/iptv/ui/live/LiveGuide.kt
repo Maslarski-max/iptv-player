@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import com.maslarski.iptv.ui.components.dpadLongPress
+import com.maslarski.iptv.ui.components.rememberDpadLongPressState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -201,6 +202,7 @@ private fun ChannelRow(
     onLongClick: (() -> Unit)?,
 ) {
     val interaction = rememberInteractionSource()
+    val longPress = rememberDpadLongPressState()
     val focused by rememberFocusState(interaction)
     Column(
         modifier.fillMaxWidth()
@@ -214,8 +216,8 @@ private fun ChannelRow(
                     else -> Color.White.copy(alpha = 0.05f)
                 },
             )
-            .dpadLongPress(onLongClick)
-            .combinedClickable(interactionSource = interaction, indication = null, onClick = onClick, onLongClick = onLongClick)
+            .dpadLongPress(longPress, onLongClick)
+            .combinedClickable(interactionSource = interaction, indication = null, onClick = longPress.click(onClick), onLongClick = onLongClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
