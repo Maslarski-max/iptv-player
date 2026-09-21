@@ -25,19 +25,32 @@ import com.maslarski.iptv.data.repository.PlaylistRepository
 import com.maslarski.iptv.data.settings.AspectRatioMode
 import com.maslarski.iptv.data.settings.LastChannel
 import com.maslarski.iptv.data.settings.SettingsRepository
+import com.maslarski.iptv.data.local.entity.ReminderEntity
+import com.maslarski.iptv.domain.model.Category
 import com.maslarski.iptv.domain.model.Channel
 import com.maslarski.iptv.domain.model.ContentType
 import com.maslarski.iptv.domain.model.EpgProgram
 import com.maslarski.iptv.domain.model.Episode
+import com.maslarski.iptv.domain.parental.ParentalGate
+import com.maslarski.iptv.domain.reminder.ReminderManager
+import com.maslarski.iptv.ui.live.reminderKey
 import com.maslarski.iptv.ui.navigation.Route
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -72,6 +85,17 @@ data class PlayerUiState(
     val favoritesOnly: Boolean = false,
 )
 
+/** Category / channel / EPG browser state shown as the translucent zapping overlay over a live stream. */
+data class LiveGuideState(
+    val categories: List<Category> = emptyList(),
+    val selectedCategoryId: String? = null,
+    val lockedCategoryIds: Set<String> = emptySet(),
+    val channels: List<Channel> = emptyList(),
+    val nowPlaying: Map<String, EpgProgram> = emptyMap(),
+    val reminders: Map<String, ReminderEntity> = emptyMap(),
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
 @UnstableApi
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -80,6 +104,8 @@ class PlayerViewModel @Inject constructor(
     private val content: ContentRepository,
     private val playlists: PlaylistRepository,
     private val settings: SettingsRepository,
+    private val gate: ParentalGate,
+    private val reminders: ReminderManager,
     okHttp: OkHttpClient,
 ) : ViewModel() {
 
@@ -112,6 +138,62 @@ class PlayerViewModel @Inject constructor(
 
     private var channelList: List<Channel> = emptyList()
     private var channelIndex = -1
+
+    // ------------------------------------------------------------ live guide
+
+    private val guideCategory = MutableStateFlow(route.categoryId)
+
+    private val lockedCategories: Flow<Set<String>> =
+        combine(content.lockedCategoryIds(route.playlistId), gate.enforcing) { ids, enforce -> if (enforce) ids else emptySet() }
+
+    private val guideChannels: Flow<List<Channel>> = combine(guideCategory, lockedCategories) { cat, locked -> cat to locked }
+        .flatMapLatest { (cat, locked) ->
+            when {
+                cat != null && cat in locked -> flowOf(emptyList())
+                cat == null && route.favoritesOnly -> content.favoriteChannels(route.playlistId)
+                cat == null -> content.channels(route.playlistId, null).map { list -> list.filter { it.categoryId !in locked } }
+                else -> content.channels(route.playlistId, cat)
+            }
+        }
+
+    val guide: StateFlow<LiveGuideState> = combine(
+        content.categories(route.playlistId, ContentType.LIVE),
+        guideCategory,
+        lockedCategories,
+        guideChannels,
+        guideChannels.flatMapLatest { list -> content.nowPlaying(list.mapNotNull { it.epgChannelId }.take(400)) },
+    ) { cats, cat, locked, channels, epg ->
+        LiveGuideState(categories = cats.filter { it.id !in locked }, selectedCategoryId = cat, lockedCategoryIds = locked, channels = channels, nowPlaying = epg)
+    }.let { base ->
+        combine(base, reminders.upcoming) { s, upcoming -> s.copy(reminders = upcoming.associateBy { reminderKey(it.epgChannelId, it.startMillis) }) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LiveGuideState())
+
+    fun selectGuideCategory(id: String?) { guideCategory.value = id }
+
+    fun programsFor(epgChannelId: String): Flow<List<EpgProgram>> {
+        val now = System.currentTimeMillis()
+        return content.programsForChannel(epgChannelId, now - 60 * 60 * 1000L, now + 12 * 60 * 60 * 1000L)
+    }
+
+    /** Zaps to a channel picked in the overlay; Channel +/- then cycles within that channel's list. */
+    fun playFromGuide(channel: Channel) {
+        val list = guide.value.channels
+        val index = list.indexOfFirst { it.id == channel.id }
+        if (index >= 0) {
+            channelList = list
+            channelIndex = index
+            _state.update { it.copy(channels = list) }
+        }
+        playChannel(channel)
+    }
+
+    fun setReminder(channel: Channel, program: EpgProgram, autoSwitch: Boolean) {
+        viewModelScope.launch { reminders.set(channel, program, autoSwitch) }
+    }
+
+    fun removeReminder(id: Long) {
+        viewModelScope.launch { reminders.remove(id) }
+    }
     private var currentEpisode: Episode? = null
     private var currentContentId: String = route.contentId
     private var reconnectJob: Job? = null

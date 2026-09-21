@@ -204,7 +204,7 @@
     <string name="activation_trial_body">Ücretsiz denemeniz etkin – %1$d gün kaldı. Her şeyi açık tutmak için şimdi etkinleştirin.</string>
     <string name="activation_active_body">Aboneliğiniz %1$s tarihine kadar etkin.</string>
     <string name="activation_how_title">Nasıl etkinleştirilir</string>
-    <string name="activation_how_body">Aşağıdaki Cihaz kimliğini istediğiniz paketle birlikte sağlayıcınıza gönderin. Yalnızca bu cihazda çalışan PLAN-XXXX-XXXX-XXXX biçiminde bir etkinleştirme anahtarı alacaksınız. Buraya girin – internet bağlantısı gerekmez.</string>
+    <string name="activation_how_body">Etkinleştirme anahtarı almak için aşağıdaki Cihaz kimliğini sağlayıcınıza gönderin veya elinizdeki bir anahtarı girin. Etkinleştirme internet bağlantısı olmadan çalışır.</string>
     <string name="activation_key">Etkinleştirme anahtarı</string>
     <string name="activation_activate">Etkinleştir</string>
     <string name="activation_invalid">Bu anahtar bu cihaz için geçerli değil.</string>
@@ -217,6 +217,13 @@
     <string name="plan_months">%1$d ay erişim</string>
     <string name="plan_once">Tek seferlik ödeme</string>
     <string name="plan_best_value">En avantajlı</string>
+    <string name="plan_trial_title">%1$d günlük ücretsiz deneme</string>
+    <string name="plan_trial_over">Deneme sona erdi</string>
+    <string name="plan_free">Ücretsiz</string>
+    <string name="plan_lifetime_title">Ömür boyu erişim</string>
+    <string name="plan_buy_google_play">Google Play ile satın al</string>
+    <string name="plan_owned">Satın alındı – teşekkürler!</string>
+    <string name="plan_store_unavailable">Google Play bu cihazda kullanılamıyor. Aşağıda bir etkinleştirme anahtarı kullanın.</string>
     <string name="favorites_hint">Bir kartı favorilerden kaldırmak için uzun basın. Yeniden eklemek için soluk karta OK’a basın.</string>
     <string name="player_channel_list">Kanallar</string>
     <string name="player_settings">Oynatıcı ayarları</string>

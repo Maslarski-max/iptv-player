@@ -204,7 +204,7 @@
     <string name="activation_trial_body">Tu prueba gratuita está activa – quedan %1$d días. Activa ahora para mantener todo desbloqueado.</string>
     <string name="activation_active_body">Tu suscripción está activa hasta el %1$s.</string>
     <string name="activation_how_title">Cómo activar</string>
-    <string name="activation_how_body">Envía el ID del dispositivo que aparece abajo a tu proveedor junto con el paquete que deseas. Recibirás una clave de activación con el formato PLAN-XXXX-XXXX-XXXX que solo funciona en este dispositivo. Introdúcela aquí – no se necesita conexión a internet.</string>
+    <string name="activation_how_body">Envía el ID del dispositivo que aparece abajo a tu proveedor para recibir una clave de activación, o introduce una clave que ya tengas. La activación funciona sin conexión a internet.</string>
     <string name="activation_key">Clave de activación</string>
     <string name="activation_activate">Activar</string>
     <string name="activation_invalid">Esta clave no es válida para este dispositivo.</string>
@@ -217,6 +217,13 @@
     <string name="plan_months">%1$d meses de acceso</string>
     <string name="plan_once">Pago único</string>
     <string name="plan_best_value">Mejor precio</string>
+    <string name="plan_trial_title">Prueba gratuita de %1$d días</string>
+    <string name="plan_trial_over">Prueba finalizada</string>
+    <string name="plan_free">Gratis</string>
+    <string name="plan_lifetime_title">Acceso de por vida</string>
+    <string name="plan_buy_google_play">Comprar con Google Play</string>
+    <string name="plan_owned">Comprado – ¡gracias!</string>
+    <string name="plan_store_unavailable">Google Play no está disponible en este dispositivo. Usa una clave de activación abajo.</string>
     <string name="favorites_hint">Mantén pulsada una tarjeta para quitarla de favoritos. Pulsa OK en una tarjeta atenuada para volver a añadirla.</string>
     <string name="player_channel_list">Canales</string>
     <string name="player_settings">Ajustes del reproductor</string>

@@ -1,11 +1,12 @@
 package com.maslarski.iptv.ui.license
 
+import android.app.Activity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,12 +15,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +38,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +51,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.maslarski.iptv.R
+import com.maslarski.iptv.domain.license.BillingManager
+import com.maslarski.iptv.domain.license.BillingState
 import com.maslarski.iptv.domain.license.LicensePlan
 import com.maslarski.iptv.domain.license.LicenseRepository
 import com.maslarski.iptv.domain.license.LicenseState
@@ -74,25 +76,23 @@ import java.text.DateFormat
 import java.util.Date
 import javax.inject.Inject
 
-/** Display-only price hints; actual purchase happens with the operator, who issues the activation key. */
-data class PlanOffer(val plan: LicensePlan, val price: String, val highlight: Boolean = false)
-
-val PlanOffers = listOf(
-    PlanOffer(LicensePlan.MONTHLY, "€4.99"),
-    PlanOffer(LicensePlan.QUARTERLY, "€12.99"),
-    PlanOffer(LicensePlan.HALF_YEAR, "€22.99"),
-    PlanOffer(LicensePlan.YEARLY, "€39.99", highlight = true),
-    PlanOffer(LicensePlan.LIFETIME, "€89.99"),
-)
-
 sealed interface ActivationResult {
     data class Success(val plan: LicensePlan) : ActivationResult
     data object Invalid : ActivationResult
 }
 
 @HiltViewModel
-class ActivationViewModel @Inject constructor(private val license: LicenseRepository) : ViewModel() {
+class ActivationViewModel @Inject constructor(
+    private val license: LicenseRepository,
+    private val billing: BillingManager,
+) : ViewModel() {
     val state: StateFlow<LicenseState?> = license.state.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val billingState: StateFlow<BillingState> = billing.state
+
+    init { billing.connect() }
+
+    /** Returns false when Google Play is unavailable (e.g. Fire TV); the UI then points to the manual key. */
+    fun purchase(activity: Activity): Boolean = billing.purchase(activity)
 
     private val _result = MutableStateFlow<ActivationResult?>(null)
     val result: StateFlow<ActivationResult?> = _result.asStateFlow()
@@ -111,9 +111,11 @@ class ActivationViewModel @Inject constructor(private val license: LicenseReposi
 fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltViewModel()) {
     val license by viewModel.state.collectAsStateWithLifecycle()
     val result by viewModel.result.collectAsStateWithLifecycle()
+    val billing by viewModel.billingState.collectAsStateWithLifecycle()
     var key by remember { mutableStateOf("") }
+    var storeUnavailable by remember { mutableStateOf(false) }
     val activateFocus = remember { FocusRequester() }
-    var selected by remember { mutableStateOf(PlanOffers.first { it.highlight }.plan) }
+    val activity = LocalActivity.current
     val dateFormat = remember { DateFormat.getDateInstance(DateFormat.LONG) }
 
     Box(
@@ -140,11 +142,19 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
             Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = Palette.Muted, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 720.dp))
             Spacer(Modifier.height(28.dp))
 
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(horizontal = 8.dp)) {
-                items(PlanOffers.size) { i ->
-                    val offer = PlanOffers[i]
-                    PlanCard(offer, selected == offer.plan) { selected = offer.plan }
-                }
+            Row(
+                Modifier.widthIn(max = 720.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                TrialCard(current, Modifier.weight(1f))
+                LifetimeCard(
+                    price = billing.price,
+                    owned = current?.isLifetime == true || billing.owned,
+                    busy = billing.busy,
+                    storeUnavailable = storeUnavailable || billing.error != null,
+                    onBuy = { if (activity == null || !viewModel.purchase(activity)) storeUnavailable = true },
+                    modifier = Modifier.weight(1f),
+                )
             }
             Spacer(Modifier.height(28.dp))
 
@@ -170,7 +180,7 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
                     modifier = Modifier.fillMaxWidth().dpadTextField(activateFocus),
                     singleLine = true,
                     label = { Text(stringResource(R.string.activation_key)) },
-                    placeholder = { Text("${selected.code}-XXXX-XXXX-XXXX", color = Palette.Muted) },
+                    placeholder = { Text("XXXX-XXXX-XXXX-XXXX", color = Palette.Muted) },
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                     isError = result is ActivationResult.Invalid,
                     supportingText = {
@@ -201,35 +211,76 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
     }
 }
 
+private val CardShape = RoundedCornerShape(20.dp)
+
+/** Read-only status of the 7-day free trial. */
 @Composable
-private fun PlanCard(offer: PlanOffer, selected: Boolean, onSelect: () -> Unit) {
+private fun TrialCard(current: LicenseState?, modifier: Modifier = Modifier) {
+    val trial = current?.status == SubscriptionStatus.TRIAL
+    Column(
+        modifier.clip(CardShape).background(Palette.SurfaceElevated.copy(alpha = 0.85f)).padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Badge(
+            stringResource(if (trial) R.string.account_status_trial else if (current?.status == SubscriptionStatus.ACTIVE) R.string.account_status_active else R.string.account_status_expired),
+            color = if (trial) Palette.ElectricBlue else if (current?.status == SubscriptionStatus.ACTIVE) Palette.Success else Palette.Danger,
+            textColor = Palette.Background,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(stringResource(R.string.plan_trial_title, LicenseRepository.TRIAL_DAYS), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            if (trial) stringResource(R.string.account_days_left, current?.daysLeft() ?: 0) else stringResource(R.string.plan_trial_over),
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            color = if (trial) Palette.OnSurface else Palette.Muted,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(R.string.plan_free), style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
+    }
+}
+
+/** The single one-time purchase; the whole card is the Play Billing buy button. */
+@Composable
+private fun LifetimeCard(
+    price: String,
+    owned: Boolean,
+    busy: Boolean,
+    storeUnavailable: Boolean,
+    onBuy: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val interaction = rememberInteractionSource()
     val focused by rememberFocusState(interaction)
-    val shape = RoundedCornerShape(20.dp)
-    val accent = if (offer.highlight) Palette.Gold else Palette.NeonPurple
     Column(
-        Modifier.width(200.dp)
-            .focusGlow(interaction, shape, focusedScale = 1.04f, borderWidth = 2.dp, glowColor = accent)
-            .clip(shape)
-            .background(if (selected || focused) Palette.SurfaceHighest else Palette.SurfaceElevated.copy(alpha = 0.85f))
-            .clickable(interactionSource = interaction, indication = null, onClick = onSelect)
+        modifier
+            .focusGlow(interaction, CardShape, focusedScale = 1.03f, borderWidth = 2.dp, glowColor = Palette.Gold)
+            .clip(CardShape)
+            .background(if (focused) Palette.SurfaceHighest else Palette.SurfaceElevated.copy(alpha = 0.85f))
+            .clickable(interactionSource = interaction, indication = null, enabled = !owned && !busy, onClick = onBuy)
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (offer.highlight) {
-            Badge(stringResource(R.string.plan_best_value), color = Palette.Gold, textColor = Palette.Background)
-            Spacer(Modifier.height(8.dp))
-        }
-        Text(stringResource(offer.plan.label()), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Badge(stringResource(R.string.plan_best_value), color = Palette.Gold, textColor = Palette.Background)
+        Spacer(Modifier.height(12.dp))
+        Text(stringResource(R.string.plan_lifetime_title), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
-        Text(offer.price, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = if (selected) accent else Palette.OnSurface)
+        Text(price, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = Palette.Gold)
         Spacer(Modifier.height(4.dp))
-        Text(
-            offer.plan.months?.let { stringResource(R.string.plan_months, it) } ?: stringResource(R.string.plan_once),
-            style = MaterialTheme.typography.labelMedium,
-            color = Palette.Muted,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text("${offer.plan.code}-····", style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace), color = Color.White.copy(alpha = 0.5f))
+        Text(stringResource(R.string.plan_once), style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.ShoppingCart, null, tint = if (owned) Palette.Success else Palette.Gold, modifier = Modifier.height(18.dp).width(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                stringResource(if (owned) R.string.plan_owned else R.string.plan_buy_google_play),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (owned) Palette.Success else Palette.OnSurface,
+            )
+        }
+        if (storeUnavailable && !owned) {
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.plan_store_unavailable), style = MaterialTheme.typography.labelSmall, color = Palette.Muted, textAlign = TextAlign.Center)
+        }
     }
 }

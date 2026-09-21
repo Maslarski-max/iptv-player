@@ -28,9 +28,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -88,6 +85,11 @@ import androidx.media3.ui.PlayerView
 import com.maslarski.iptv.R
 import com.maslarski.iptv.data.settings.AspectRatioMode
 import com.maslarski.iptv.domain.model.Channel
+import com.maslarski.iptv.domain.model.EpgProgram
+import com.maslarski.iptv.ui.live.LiveGuideColumns
+import com.maslarski.iptv.ui.live.ReminderDialog
+import com.maslarski.iptv.ui.live.reminderKey
+import kotlinx.coroutines.flow.Flow
 import com.maslarski.iptv.ui.components.Pill
 import com.maslarski.iptv.ui.components.focusGlow
 import com.maslarski.iptv.ui.components.rememberFocusState
@@ -100,12 +102,14 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private enum class Panel { NONE, AUDIO, SUBTITLES, CHANNELS, SETTINGS }
+private enum class Panel { NONE, AUDIO, SUBTITLES, GUIDE, SETTINGS }
 
 @UnstableApi
 @Composable
 fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val guide by viewModel.guide.collectAsStateWithLifecycle()
+    var reminderSelection by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
     var controlsVisible by remember { mutableStateOf(true) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var panel by remember { mutableStateOf(Panel.NONE) }
@@ -119,7 +123,10 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
         delay(OSD_TIMEOUT_MS)
         if (state.isPlaying) controlsVisible = false
     }
-    LaunchedEffect(controlsVisible) { if (controlsVisible) playFocus.requestFocus() else rootFocus.requestFocus() }
+    LaunchedEffect(controlsVisible, panel) {
+        if (panel != Panel.NONE) return@LaunchedEffect
+        runCatching { if (controlsVisible) playFocus.requestFocus() else rootFocus.requestFocus() }
+    }
     DisposableEffect(Unit) { onDispose { viewModel.onLeave() } }
 
     BackHandler {
@@ -152,13 +159,13 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                     KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN -> { viewModel.channelDown(); true }
                     KeyEvent.KEYCODE_CAPTIONS -> { panel = Panel.SUBTITLES; true }
                     KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { panel = Panel.SETTINGS; true }
-                    KeyEvent.KEYCODE_GUIDE, KeyEvent.KEYCODE_TV -> { if (state.isLive) panel = Panel.CHANNELS; state.isLive }
+                    KeyEvent.KEYCODE_GUIDE, KeyEvent.KEYCODE_TV -> { if (state.isLive) panel = Panel.GUIDE; state.isLive }
                     else -> when (event.key) {
                         Key.DirectionUp -> if (!controlsVisible && panel == Panel.NONE && state.isLive) { viewModel.channelUp(); true } else false
                         Key.DirectionDown -> if (!controlsVisible && panel == Panel.NONE && state.isLive) { viewModel.channelDown(); true } else false
                         Key.DirectionLeft -> when {
                             controlsVisible || panel != Panel.NONE -> false
-                            state.isLive -> { panel = Panel.CHANNELS; true }
+                            state.isLive -> { panel = Panel.GUIDE; true }
                             else -> { viewModel.seekBack(); true }
                         }
                         Key.DirectionRight -> when {
@@ -166,7 +173,11 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                             state.isLive -> { panel = Panel.SETTINGS; true }
                             else -> { viewModel.seekForward(); true }
                         }
-                        Key.DirectionCenter, Key.Enter -> if (!controlsVisible && panel == Panel.NONE) { poke(); true } else false
+                        Key.DirectionCenter, Key.Enter -> when {
+                            controlsVisible || panel != Panel.NONE -> false
+                            state.isLive -> { panel = Panel.GUIDE; true }
+                            else -> { poke(); true }
+                        }
                         else -> false
                     }
                 }
@@ -234,7 +245,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 onAudio = { panel = Panel.AUDIO; poke() },
                 onSubtitles = { panel = Panel.SUBTITLES; poke() },
                 onNext = { if (state.isLive) viewModel.channelUp() else viewModel.playNextEpisode(); poke() },
-                onChannels = { panel = Panel.CHANNELS; poke() },
+                onChannels = { panel = Panel.GUIDE; poke() },
                 onSettings = { panel = Panel.SETTINGS; poke() },
             )
         }
@@ -262,14 +273,32 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             }
         }
 
-        if (panel == Panel.CHANNELS) {
-            ChannelPanel(
-                channels = state.channels,
-                currentId = state.currentChannelId,
-                favoritesOnly = state.favoritesOnly,
-                onSelect = { viewModel.playChannelById(it.id); panel = Panel.NONE; poke() },
-                onDismiss = { panel = Panel.NONE; poke() },
+        if (panel == Panel.GUIDE) {
+            val zap: (Channel) -> Unit = { viewModel.playFromGuide(it); panel = Panel.NONE; poke() }
+            LiveGuideOverlay(
+                guide = guide,
+                state = state,
+                onSelectCategory = viewModel::selectGuideCategory,
+                onPlay = zap,
+                programsFor = viewModel::programsFor,
+                onProgramClick = { channel, program ->
+                    if (program.startMillis > System.currentTimeMillis()) reminderSelection = channel to program else zap(channel)
+                },
             )
+            val sel = reminderSelection
+            if (sel != null) {
+                val (channel, program) = sel
+                ReminderDialog(
+                    channel = channel,
+                    program = program,
+                    existing = guide.reminders[reminderKey(program.epgChannelId, program.startMillis)],
+                    onRemind = { viewModel.setReminder(channel, program, autoSwitch = false); reminderSelection = null },
+                    onAutoSwitch = { viewModel.setReminder(channel, program, autoSwitch = true); reminderSelection = null },
+                    onRemove = { viewModel.removeReminder(it); reminderSelection = null },
+                    onWatchNow = { zap(channel); reminderSelection = null },
+                    onDismiss = { reminderSelection = null },
+                )
+            }
         }
         if (panel == Panel.SETTINGS) {
             SettingsPanel(
@@ -373,61 +402,45 @@ private fun Controls(
     }
 }
 
-/** Semi-transparent channel list over the running stream; Left/Right or Back closes it without stopping playback. */
+/**
+ * Full-screen translucent zapping overlay: categories | channels | EPG, all over the running stream.
+ * Back closes it; picking a channel zaps without leaving the player.
+ */
 @Composable
-private fun ChannelPanel(
-    channels: List<Channel>,
-    currentId: String?,
-    favoritesOnly: Boolean,
-    onSelect: (Channel) -> Unit,
-    onDismiss: () -> Unit,
+private fun LiveGuideOverlay(
+    guide: LiveGuideState,
+    state: PlayerUiState,
+    onSelectCategory: (String?) -> Unit,
+    onPlay: (Channel) -> Unit,
+    programsFor: (String) -> Flow<List<EpgProgram>>,
+    onProgramClick: (Channel, EpgProgram) -> Unit,
 ) {
-    val listState = rememberLazyListState()
-    val currentFocus = remember { FocusRequester() }
-    val currentIndex = channels.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
-    LaunchedEffect(currentId) {
-        if (channels.isNotEmpty()) listState.scrollToItem((currentIndex - 3).coerceAtLeast(0))
-        runCatching { currentFocus.requestFocus() }
-    }
-    Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
-        Column(
-            Modifier.align(Alignment.CenterStart).fillMaxHeight().width(360.dp)
-                .background(Brush.horizontalGradient(listOf(Palette.Background.copy(alpha = 0.92f), Palette.Background.copy(alpha = 0.72f), Color.Transparent)))
-                .padding(start = 24.dp, end = 40.dp, top = 28.dp, bottom = 28.dp)
-                .onPreviewKeyEvent { e -> if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight) { onDismiss(); true } else false },
-        ) {
-            Text(
-                stringResource(if (favoritesOnly) R.string.nav_favorites else R.string.player_channel_list),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Text(stringResource(R.string.items_count, channels.size), style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
-            Spacer(Modifier.height(12.dp))
-            LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxHeight()) {
-                itemsIndexed(channels, key = { _, c -> c.id }) { index, channel ->
-                    val interaction = rememberInteractionSource()
-                    val focused by rememberFocusState(interaction)
-                    val selected = channel.id == currentId
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .let { if (index == currentIndex) it.focusRequester(currentFocus) else it }
-                            .focusGlow(interaction, RoundedCornerShape(10.dp), focusedScale = 1.02f, borderWidth = 2.dp, glowColor = Palette.ElectricBlue)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(when { focused -> Palette.NeonPurple.copy(alpha = 0.85f); selected -> Color.White.copy(alpha = 0.14f); else -> Color.Transparent })
-                            .clickable(interactionSource = interaction, indication = null) { onSelect(channel) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            channel.channelNumber?.toString() ?: "${index + 1}",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (selected && !focused) Palette.ElectricBlue else Color.White,
-                            modifier = Modifier.width(40.dp),
-                        )
-                        Text(channel.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.White)
+    Box(Modifier.fillMaxSize().background(Palette.Background.copy(alpha = 0.82f))) {
+        LiveGuideColumns(
+            categories = guide.categories,
+            selectedCategoryId = guide.selectedCategoryId,
+            lockedCategoryIds = guide.lockedCategoryIds,
+            allLabel = stringResource(if (state.favoritesOnly) R.string.nav_favorites else R.string.category_all),
+            onSelectCategory = onSelectCategory,
+            channels = guide.channels,
+            nowPlaying = guide.nowPlaying,
+            currentChannelId = state.currentChannelId,
+            onPlay = onPlay,
+            programsFor = programsFor,
+            reminders = guide.reminders,
+            onProgramClick = onProgramClick,
+            translucent = true,
+            focusCurrentOnShow = true,
+            header = {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+                    if (state.channelNumber != null) {
+                        Text("${state.channelNumber}", style = MaterialTheme.typography.titleLarge, color = Palette.ElectricBlue)
+                        Spacer(Modifier.width(10.dp))
                     }
+                    Text(state.title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-            }
-        }
+            },
+        )
     }
 }
 

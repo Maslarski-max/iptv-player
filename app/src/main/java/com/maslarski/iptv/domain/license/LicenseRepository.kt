@@ -59,9 +59,18 @@ data class LicenseState(
 object LicenseKeys {
     private const val SECRET = "iptv-player-activation-v1"
 
+    /** Universal master keys accepted on every device: 30 days of premium, or a permanent activation. */
+    const val MASTER_MONTH = "MAX-1M-MASTER-2026"
+    const val MASTER_LIFETIME = "MAX-LIFE-VIP-PERM"
+
+    private val masterKeys = mapOf(MASTER_MONTH to LicensePlan.MONTHLY, MASTER_LIFETIME to LicensePlan.LIFETIME)
+
     fun normalize(raw: String): String = raw.trim().uppercase(Locale.ROOT).replace(" ", "").replace("_", "-")
 
+    fun isMaster(key: String): Boolean = normalize(key) in masterKeys
+
     fun planFor(key: String, deviceId: String): LicensePlan? {
+        masterKeys[normalize(key)]?.let { return it }
         val parts = normalize(key).split("-")
         if (parts.size != 4) return null
         val plan = LicensePlan.fromCode(parts[0]) ?: return null
@@ -123,7 +132,7 @@ class LicenseRepository @Inject constructor(
     }
 
     private fun localState(s: AppSettings, now: Long): LicenseState {
-        val plan = s.licenseKey?.let { LicenseKeys.planFor(it, deviceId) }
+        val plan = s.licenseKey?.let { if (it.startsWith(PURCHASE_KEY_PREFIX)) LicensePlan.LIFETIME else LicenseKeys.planFor(it, deviceId) }
         val activatedAt = s.licenseActivatedAt
         val trialStart = s.trialStartedAt ?: installTime()
         val trialEnd = trialStart + TRIAL_DAYS * LicenseState.DAY_MS
@@ -149,18 +158,29 @@ class LicenseRepository @Inject constructor(
 
     suspend fun ensureTrialStarted() = settings.ensureTrialStarted(installTime())
 
-    /** Returns the activated plan, or null when the key does not match this device. */
+    /** Returns the activated plan, or null when the key is neither a master key nor a match for this device. */
     suspend fun activate(key: String): LicensePlan? {
         val plan = LicenseKeys.planFor(key, deviceId) ?: return null
-        val activatedAt = System.currentTimeMillis() + remote.serverClockOffsetMs.value
-        settings.setLicense(LicenseKeys.normalize(key), activatedAt)
-        remote.recordActivation(deviceId, plan, planEnd(plan, activatedAt))
+        persistActivation(LicenseKeys.normalize(key), plan)
         return plan
+    }
+
+    /** Unlocks the lifetime plan after a verified Google Play purchase; the purchase token is kept as the local key. */
+    suspend fun activatePurchase(purchaseToken: String) =
+        persistActivation(PURCHASE_KEY_PREFIX + purchaseToken, LicensePlan.LIFETIME)
+
+    private suspend fun persistActivation(key: String, plan: LicensePlan) {
+        val activatedAt = System.currentTimeMillis() + remote.serverClockOffsetMs.value
+        settings.setLicense(key, activatedAt)
+        remote.recordActivation(deviceId, plan, planEnd(plan, activatedAt))
     }
 
     private fun installTime(): Long = runCatching {
         context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
     }.getOrDefault(System.currentTimeMillis())
 
-    companion object { const val TRIAL_DAYS = 7 }
+    companion object {
+        const val TRIAL_DAYS = 7
+        private const val PURCHASE_KEY_PREFIX = "GPLAY:"
+    }
 }

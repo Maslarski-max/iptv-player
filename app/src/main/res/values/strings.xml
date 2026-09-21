@@ -241,7 +241,7 @@
     <string name="activation_trial_body">Your free trial is active – %1$d days left. Activate now to keep everything unlocked.</string>
     <string name="activation_active_body">Your subscription is active until %1$s.</string>
     <string name="activation_how_title">How to activate</string>
-    <string name="activation_how_body">Send the Device ID shown below to your provider together with the package you want. You will receive an activation key in the form PLAN-XXXX-XXXX-XXXX that only works on this device. Enter it here – no internet connection is required.</string>
+    <string name="activation_how_body">Send the Device ID shown below to your provider to receive an activation key, or enter a key you already have. Activation works without an internet connection.</string>
     <string name="activation_key">Activation key</string>
     <string name="activation_activate">Activate</string>
     <string name="activation_invalid">This key is not valid for this device.</string>
@@ -254,6 +254,13 @@
     <string name="plan_months">%1$d months of access</string>
     <string name="plan_once">One-time payment</string>
     <string name="plan_best_value">Best value</string>
+    <string name="plan_trial_title">%1$d-day free trial</string>
+    <string name="plan_trial_over">Trial ended</string>
+    <string name="plan_free">Free</string>
+    <string name="plan_lifetime_title">Lifetime access</string>
+    <string name="plan_buy_google_play">Buy with Google Play</string>
+    <string name="plan_owned">Purchased – thank you!</string>
+    <string name="plan_store_unavailable">Google Play is not available on this device. Use an activation key below.</string>
 
     <!-- Favorites -->
     <string name="favorites_hint">Long-press a card to remove it from favorites. Press OK on a dimmed card to add it back.</string>

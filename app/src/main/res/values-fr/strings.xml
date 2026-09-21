@@ -204,7 +204,7 @@
     <string name="activation_trial_body">Votre essai gratuit est actif – %1$d jours restants. Activez maintenant pour tout garder débloqué.</string>
     <string name="activation_active_body">Votre abonnement est actif jusqu’au %1$s.</string>
     <string name="activation_how_title">Comment activer</string>
-    <string name="activation_how_body">Envoyez l’ID de l’appareil ci-dessous à votre fournisseur avec le forfait souhaité. Vous recevrez une clé d’activation au format PLAN-XXXX-XXXX-XXXX valable uniquement sur cet appareil. Saisissez-la ici – aucune connexion internet requise.</string>
+    <string name="activation_how_body">Envoyez l’ID de l’appareil ci-dessous à votre fournisseur pour recevoir une clé d’activation, ou saisissez une clé que vous avez déjà. L’activation fonctionne sans connexion internet.</string>
     <string name="activation_key">Clé d’activation</string>
     <string name="activation_activate">Activer</string>
     <string name="activation_invalid">Cette clé n’est pas valable pour cet appareil.</string>
@@ -217,6 +217,13 @@
     <string name="plan_months">%1$d mois d’accès</string>
     <string name="plan_once">Paiement unique</string>
     <string name="plan_best_value">Meilleure offre</string>
+    <string name="plan_trial_title">Essai gratuit de %1$d jours</string>
+    <string name="plan_trial_over">Essai terminé</string>
+    <string name="plan_free">Gratuit</string>
+    <string name="plan_lifetime_title">Accès à vie</string>
+    <string name="plan_buy_google_play">Acheter avec Google Play</string>
+    <string name="plan_owned">Acheté – merci !</string>
+    <string name="plan_store_unavailable">Google Play n’est pas disponible sur cet appareil. Utilisez une clé d’activation ci-dessous.</string>
     <string name="favorites_hint">Appuyez longuement sur une carte pour la retirer des favoris. Appuyez sur OK sur une carte grisée pour la rajouter.</string>
     <string name="player_channel_list">Chaînes</string>
     <string name="player_settings">Paramètres du lecteur</string>

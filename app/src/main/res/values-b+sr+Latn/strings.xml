@@ -204,7 +204,7 @@
     <string name="activation_trial_body">Vaš probni period je aktivan – preostalo je još %1$d dana. Aktivirajte sada da sve ostane otključano.</string>
     <string name="activation_active_body">Vaša pretplata je aktivna do %1$s.</string>
     <string name="activation_how_title">Kako aktivirati</string>
-    <string name="activation_how_body">Pošaljite ID uređaja prikazan ispod svom provajderu zajedno sa željenim paketom. Dobićete aktivacioni ključ u obliku PLAN-XXXX-XXXX-XXXX koji radi samo na ovom uređaju. Unesite ga ovde – internet veza nije potrebna.</string>
+    <string name="activation_how_body">Pošaljite ID uređaja prikazan ispod svom provajderu da dobijete aktivacioni ključ, ili unesite ključ koji već imate. Aktivacija radi bez internet veze.</string>
     <string name="activation_key">Aktivacioni ključ</string>
     <string name="activation_activate">Aktiviraj</string>
     <string name="activation_invalid">Ovaj ključ nije važeći za ovaj uređaj.</string>
@@ -217,6 +217,13 @@
     <string name="plan_months">%1$d meseci pristupa</string>
     <string name="plan_once">Jednokratno plaćanje</string>
     <string name="plan_best_value">Najbolja vrednost</string>
+    <string name="plan_trial_title">Besplatni probni period od %1$d dana</string>
+    <string name="plan_trial_over">Probni period je završen</string>
+    <string name="plan_free">Besplatno</string>
+    <string name="plan_lifetime_title">Doživotni pristup</string>
+    <string name="plan_buy_google_play">Kupi preko Google Play-a</string>
+    <string name="plan_owned">Kupljeno – hvala!</string>
+    <string name="plan_store_unavailable">Google Play nije dostupan na ovom uređaju. Koristite aktivacioni ključ ispod.</string>
     <string name="favorites_hint">Dugo pritisnite karticu da je uklonite iz omiljenih. Pritisnite OK na zatamnjenoj kartici da je ponovo dodate.</string>
     <string name="player_channel_list">Kanali</string>
     <string name="player_settings">Podešavanja plejera</string>

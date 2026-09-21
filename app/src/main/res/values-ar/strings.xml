@@ -204,7 +204,7 @@
     <string name="activation_trial_body">فترتك التجريبية نشطة – متبقٍ %1$d يومًا. فعّل الآن لإبقاء كل شيء مفتوحًا.</string>
     <string name="activation_active_body">اشتراكك نشط حتى %1$s.</string>
     <string name="activation_how_title">كيفية التفعيل</string>
-    <string name="activation_how_body">أرسل معرّف الجهاز الظاهر أدناه إلى مزوّدك مع الباقة التي تريدها. ستحصل على مفتاح تفعيل بصيغة PLAN-XXXX-XXXX-XXXX يعمل على هذا الجهاز فقط. أدخله هنا – لا حاجة لاتصال بالإنترنت.</string>
+    <string name="activation_how_body">أرسل معرّف الجهاز الظاهر أدناه إلى مزوّدك للحصول على مفتاح تفعيل، أو أدخل مفتاحًا لديك بالفعل. يعمل التفعيل بدون اتصال بالإنترنت.</string>
     <string name="activation_key">مفتاح التفعيل</string>
     <string name="activation_activate">تفعيل</string>
     <string name="activation_invalid">هذا المفتاح غير صالح لهذا الجهاز.</string>
@@ -217,6 +217,13 @@
     <string name="plan_months">%1$d أشهر من الوصول</string>
     <string name="plan_once">دفعة واحدة</string>
     <string name="plan_best_value">أفضل قيمة</string>
+    <string name="plan_trial_title">فترة تجريبية مجانية لمدة %1$d أيام</string>
+    <string name="plan_trial_over">انتهت الفترة التجريبية</string>
+    <string name="plan_free">مجاني</string>
+    <string name="plan_lifetime_title">وصول مدى الحياة</string>
+    <string name="plan_buy_google_play">الشراء عبر Google Play</string>
+    <string name="plan_owned">تم الشراء – شكرًا لك!</string>
+    <string name="plan_store_unavailable">Google Play غير متاح على هذا الجهاز. استخدم مفتاح تفعيل أدناه.</string>
     <string name="favorites_hint">اضغط مطولًا على بطاقة لإزالتها من المفضلة. اضغط OK على بطاقة خافتة لإعادة إضافتها.</string>
     <string name="player_channel_list">القنوات</string>
     <string name="player_settings">إعدادات المشغّل</string>

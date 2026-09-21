@@ -37,7 +37,6 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -70,7 +69,6 @@ import com.maslarski.iptv.R
 import com.maslarski.iptv.domain.model.ContentType
 import com.maslarski.iptv.domain.model.MediaItem
 import com.maslarski.iptv.ui.browse.BrowseScreen
-import com.maslarski.iptv.ui.browse.LiveViewModel
 import com.maslarski.iptv.ui.browse.MoviesViewModel
 import com.maslarski.iptv.ui.browse.SeriesViewModel
 import com.maslarski.iptv.ui.components.focusGlow
@@ -79,10 +77,10 @@ import com.maslarski.iptv.ui.components.rememberInteractionSource
 import com.maslarski.iptv.ui.details.MovieDetailsScreen
 import com.maslarski.iptv.ui.details.SeriesDetailsScreen
 import com.maslarski.iptv.ui.favorites.FavoritesScreen
-import com.maslarski.iptv.ui.guide.GuideScreen
 import com.maslarski.iptv.ui.home.Featured
 import com.maslarski.iptv.ui.home.HomeScreen
 import com.maslarski.iptv.ui.license.ActivationScreen
+import com.maslarski.iptv.ui.live.LiveScreen
 import com.maslarski.iptv.ui.navigation.Route
 import com.maslarski.iptv.ui.player.PlayerScreen
 import com.maslarski.iptv.ui.playlists.EditPlaylistScreen
@@ -91,12 +89,14 @@ import com.maslarski.iptv.ui.search.SearchScreen
 import com.maslarski.iptv.ui.settings.SettingsScreen
 import com.maslarski.iptv.ui.theme.Palette
 
+private val TvOverscanTop = 36.dp
+private val TvOverscanBottom = 24.dp
+
 private data class NavItem(val route: Route, val icon: ImageVector, val label: Int)
 
 private val NavItems = listOf(
     NavItem(Route.Home, Icons.Filled.Home, R.string.nav_home),
     NavItem(Route.Live, Icons.Filled.LiveTv, R.string.nav_live),
-    NavItem(Route.Guide, Icons.Filled.ViewAgenda, R.string.nav_guide),
     NavItem(Route.Movies, Icons.Filled.Movie, R.string.nav_movies),
     NavItem(Route.Series, Icons.Filled.Tv, R.string.nav_series),
     NavItem(Route.Search, Icons.Filled.Search, R.string.nav_search),
@@ -160,7 +160,10 @@ fun IptvApp() {
 
     Box(Modifier.fillMaxSize().background(Palette.Background)) {
         val content: @Composable (Modifier) -> Unit = { modifier ->
-            Box(modifier.then(if (isPlayer) Modifier else Modifier.windowInsetsPadding(WindowInsets.safeDrawing))) {
+            // TV panels overscan: keep the top/bottom of every non-player screen inside the visible area.
+            val overscan = if (isPlayer) Modifier else if (isCompact) Modifier.windowInsetsPadding(WindowInsets.safeDrawing)
+            else Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(top = TvOverscanTop, bottom = TvOverscanBottom)
+            Box(modifier.then(overscan)) {
                 AppNavHost(nav, isCompact)
                 if (locked) {
                     Box(Modifier.fillMaxSize().background(Palette.Background).zIndex(2f)) {
@@ -226,16 +229,13 @@ private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
             )
         }
         composable<Route.Live> {
-            BrowseScreen(stringResource(R.string.nav_live), ContentType.LIVE, hiltViewModel<LiveViewModel>(), isCompact, play)
+            LiveScreen(isCompact = isCompact, onPlay = { c -> nav.navigate(Route.Player(c.playlistId, c.id, ContentType.LIVE.name, c.categoryId)) })
         }
         composable<Route.Movies> {
             BrowseScreen(stringResource(R.string.nav_movies), ContentType.MOVIE, hiltViewModel<MoviesViewModel>(), isCompact, openDetails)
         }
         composable<Route.Series> {
             BrowseScreen(stringResource(R.string.nav_series), ContentType.SERIES, hiltViewModel<SeriesViewModel>(), isCompact, openDetails)
-        }
-        composable<Route.Guide> {
-            GuideScreen(onPlayChannel = { c -> nav.navigate(Route.Player(c.playlistId, c.id, ContentType.LIVE.name, c.categoryId)) })
         }
         composable<Route.Search> { SearchScreen(onPlay = play, onOpenDetails = openDetails) }
         composable<Route.Favorites> { FavoritesScreen(onPlay = playFavorite, onOpenDetails = openDetails) }
@@ -268,7 +268,7 @@ private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
 private fun SideRail(selected: NavItem?, onSelect: (Route) -> Unit) {
     Column(
         Modifier.fillMaxHeight().width(96.dp).background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing)
-            .verticalScroll(rememberScrollState()).padding(vertical = 12.dp).zIndex(1f),
+            .verticalScroll(rememberScrollState()).padding(top = TvOverscanTop, bottom = 12.dp).zIndex(1f),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -306,7 +306,7 @@ private fun BottomBar(selected: NavItem?, onSelect: (Route) -> Unit) {
         Modifier.fillMaxWidth().background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        NavItems.filter { it.route != Route.Guide && it.route != Route.Favorites }.forEach { item ->
+        NavItems.filter { it.route != Route.Favorites }.forEach { item ->
             val interaction = rememberInteractionSource()
             val isSel = item == selected
             Column(

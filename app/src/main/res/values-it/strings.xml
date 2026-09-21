@@ -204,7 +204,7 @@
     <string name="activation_trial_body">La tua prova gratuita è attiva – %1$d giorni rimanenti. Attiva ora per mantenere tutto sbloccato.</string>
     <string name="activation_active_body">Il tuo abbonamento è attivo fino al %1$s.</string>
     <string name="activation_how_title">Come attivare</string>
-    <string name="activation_how_body">Invia l’ID dispositivo mostrato qui sotto al tuo fornitore insieme al pacchetto desiderato. Riceverai una chiave di attivazione nel formato PLAN-XXXX-XXXX-XXXX valida solo su questo dispositivo. Inseriscila qui – non serve connessione internet.</string>
+    <string name="activation_how_body">Invia l’ID dispositivo mostrato qui sotto al tuo fornitore per ricevere una chiave di attivazione, oppure inserisci una chiave che hai già. L’attivazione funziona senza connessione internet.</string>
     <string name="activation_key">Chiave di attivazione</string>
     <string name="activation_activate">Attiva</string>
     <string name="activation_invalid">Questa chiave non è valida per questo dispositivo.</string>
@@ -217,6 +217,13 @@
     <string name="plan_months">%1$d mesi di accesso</string>
     <string name="plan_once">Pagamento unico</string>
     <string name="plan_best_value">Più conveniente</string>
+    <string name="plan_trial_title">Prova gratuita di %1$d giorni</string>
+    <string name="plan_trial_over">Prova terminata</string>
+    <string name="plan_free">Gratis</string>
+    <string name="plan_lifetime_title">Accesso a vita</string>
+    <string name="plan_buy_google_play">Acquista con Google Play</string>
+    <string name="plan_owned">Acquistato – grazie!</string>
+    <string name="plan_store_unavailable">Google Play non è disponibile su questo dispositivo. Usa una chiave di attivazione qui sotto.</string>
     <string name="favorites_hint">Tieni premuta una scheda per rimuoverla dai preferiti. Premi OK su una scheda attenuata per aggiungerla di nuovo.</string>
     <string name="player_channel_list">Canali</string>
     <string name="player_settings">Impostazioni player</string>

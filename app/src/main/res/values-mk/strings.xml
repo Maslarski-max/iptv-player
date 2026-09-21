@@ -204,7 +204,7 @@
     <string name="activation_trial_body">Вашиот пробен период е активен – преостануваат уште %1$d дена. Активирајте сега за сè да остане отклучено.</string>
     <string name="activation_active_body">Вашата претплата е активна до %1$s.</string>
     <string name="activation_how_title">Како да активирате</string>
-    <string name="activation_how_body">Испратете го ID-то на уредот прикажано подолу до вашиот провајдер заедно со пакетот што го сакате. Ќе добиете клуч за активација во форма PLAN-XXXX-XXXX-XXXX што работи само на овој уред. Внесете го тука – не е потребна интернет-врска.</string>
+    <string name="activation_how_body">Испратете го ID-то на уредот прикажано подолу до вашиот провајдер за да добиете клуч за активација, или внесете клуч што веќе го имате. Активацијата работи без интернет-врска.</string>
     <string name="activation_key">Клуч за активација</string>
     <string name="activation_activate">Активирај</string>
     <string name="activation_invalid">Овој клуч не е валиден за овој уред.</string>
@@ -217,6 +217,13 @@
     <string name="plan_months">%1$d месеци пристап</string>
     <string name="plan_once">Еднократно плаќање</string>
     <string name="plan_best_value">Најдобра вредност</string>
+    <string name="plan_trial_title">Бесплатен пробен период од %1$d дена</string>
+    <string name="plan_trial_over">Пробниот период заврши</string>
+    <string name="plan_free">Бесплатно</string>
+    <string name="plan_lifetime_title">Доживотен пристап</string>
+    <string name="plan_buy_google_play">Купи преку Google Play</string>
+    <string name="plan_owned">Купено – благодариме!</string>
+    <string name="plan_store_unavailable">Google Play не е достапен на овој уред. Користете клуч за активација подолу.</string>
     <string name="favorites_hint">Долго притиснете картичка за да ја отстраните од омилени. Притиснете OK на затемнета картичка за повторно да ја додадете.</string>
     <string name="player_channel_list">Канали</string>
     <string name="player_settings">Поставки на плеерот</string>

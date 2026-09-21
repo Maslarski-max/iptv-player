@@ -204,7 +204,7 @@
     <string name="activation_trial_body">Deine Testphase ist aktiv – noch %1$d Tage. Aktiviere jetzt, um alles freigeschaltet zu behalten.</string>
     <string name="activation_active_body">Dein Abo ist aktiv bis %1$s.</string>
     <string name="activation_how_title">So aktivierst du</string>
-    <string name="activation_how_body">Sende die unten angezeigte Geräte-ID zusammen mit dem gewünschten Paket an deinen Anbieter. Du erhältst einen Aktivierungsschlüssel im Format PLAN-XXXX-XXXX-XXXX, der nur auf diesem Gerät funktioniert. Gib ihn hier ein – keine Internetverbindung nötig.</string>
+    <string name="activation_how_body">Sende die unten angezeigte Geräte-ID an deinen Anbieter, um einen Aktivierungsschlüssel zu erhalten, oder gib einen vorhandenen Schlüssel ein. Die Aktivierung funktioniert ohne Internetverbindung.</string>
     <string name="activation_key">Aktivierungsschlüssel</string>
     <string name="activation_activate">Aktivieren</string>
     <string name="activation_invalid">Dieser Schlüssel ist für dieses Gerät ungültig.</string>
@@ -217,6 +217,13 @@
     <string name="plan_months">%1$d Monate Zugang</string>
     <string name="plan_once">Einmalzahlung</string>
     <string name="plan_best_value">Bestes Angebot</string>
+    <string name="plan_trial_title">%1$d Tage kostenlos testen</string>
+    <string name="plan_trial_over">Testphase beendet</string>
+    <string name="plan_free">Kostenlos</string>
+    <string name="plan_lifetime_title">Lebenslanger Zugang</string>
+    <string name="plan_buy_google_play">Mit Google Play kaufen</string>
+    <string name="plan_owned">Gekauft – vielen Dank!</string>
+    <string name="plan_store_unavailable">Google Play ist auf diesem Gerät nicht verfügbar. Nutze unten einen Aktivierungsschlüssel.</string>
     <string name="favorites_hint">Halte eine Karte gedrückt, um sie aus den Favoriten zu entfernen. Drücke OK auf einer abgedunkelten Karte, um sie wieder hinzuzufügen.</string>
     <string name="player_channel_list">Sender</string>
     <string name="player_settings">Player-Einstellungen</string>
