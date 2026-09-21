@@ -103,7 +103,7 @@ fun LiveGuideColumns(
     val panelBg = if (translucent) Color.White.copy(alpha = 0.06f) else Palette.Surface
 
     Row(modifier.fillMaxSize()) {
-        Column(Modifier.width(280.dp).fillMaxHeight().padding(start = 32.dp, end = 12.dp, top = 24.dp)) {
+        Column(Modifier.width(232.dp).fillMaxHeight().padding(start = 24.dp, end = 12.dp, top = 24.dp)) {
             header?.invoke()
             Text(stringResource(R.string.categories_title), style = MaterialTheme.typography.labelMedium, color = Palette.Muted, modifier = Modifier.padding(bottom = 12.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 32.dp)) {
@@ -125,7 +125,7 @@ fun LiveGuideColumns(
         )
 
         Column(
-            Modifier.width(400.dp).fillMaxHeight().padding(top = 24.dp, end = 32.dp, bottom = 24.dp)
+            Modifier.width(340.dp).fillMaxHeight().padding(top = 24.dp, end = 24.dp, bottom = 24.dp)
                 .clip(RoundedCornerShape(16.dp)).background(panelBg).padding(16.dp),
         ) {
             if (shown != null) {

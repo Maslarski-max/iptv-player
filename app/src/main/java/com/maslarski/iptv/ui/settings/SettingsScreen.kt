@@ -209,10 +209,13 @@ fun SettingsScreen(
     }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp)) {
-        item { Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium); Spacer(Modifier.height(16.dp)) }
-
-        item { SectionHeader(stringResource(R.string.settings_account)); Spacer(Modifier.height(8.dp)) }
+        // Title, section header and the first focusable card share one item so D-pad Up onto
+        // "Activate premium" scrolls the headings back into view instead of stopping below them.
         item {
+            Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(16.dp))
+            SectionHeader(stringResource(R.string.settings_account))
+            Spacer(Modifier.height(8.dp))
             state.license?.let { AccountCard(it, onActivate) }
             Spacer(Modifier.height(28.dp))
         }
