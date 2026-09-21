@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -208,16 +211,22 @@ fun SettingsScreen(
         PinMode.NONE -> Unit
     }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp)) {
-        // Title, section header and the first focusable card share one item so D-pad Up onto
-        // "Activate premium" scrolls the headings back into view instead of stopping below them.
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp)) {
+        // Focus only scrolls the focused control into view, so when the first card gains focus we
+        // scroll to the top explicitly to bring the headings back after scrolling down.
         item {
-            Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(16.dp))
-            SectionHeader(stringResource(R.string.settings_account))
-            Spacer(Modifier.height(8.dp))
-            state.license?.let { AccountCard(it, onActivate) }
-            Spacer(Modifier.height(28.dp))
+            Column(
+                Modifier.onFocusChanged { if (it.hasFocus) scope.launch { listState.animateScrollToItem(0) } },
+            ) {
+                Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
+                Spacer(Modifier.height(16.dp))
+                SectionHeader(stringResource(R.string.settings_account))
+                Spacer(Modifier.height(8.dp))
+                state.license?.let { AccountCard(it, onActivate) }
+                Spacer(Modifier.height(28.dp))
+            }
         }
 
         item { SectionHeader(stringResource(R.string.settings_language)); Spacer(Modifier.height(8.dp)) }
