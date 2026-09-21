@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.NativeKeyEvent
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
@@ -93,6 +95,30 @@ fun rememberInteractionSource(): MutableInteractionSource = remember { MutableIn
 
 fun Modifier.dpadFocusable(interactionSource: MutableInteractionSource): Modifier =
     focusable(interactionSource = interactionSource)
+
+/**
+ * Reliable remote-control "long press": fires [onLongPress] once when D-pad Center / Enter is held
+ * (first key repeat) and swallows the trailing key-up so the item's normal click does not fire too.
+ * Also mapped to the remote Menu / Bookmark keys for a single-press alternative.
+ */
+@Composable
+fun Modifier.dpadLongPress(onLongPress: (() -> Unit)?): Modifier {
+    if (onLongPress == null) return this
+    val fired = remember { mutableStateOf(false) }
+    return onPreviewKeyEvent { event ->
+        val isSelect = event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
+        val isShortcut = event.key == Key.Menu || event.key == Key.Bookmark
+        when {
+            event.type == KeyEventType.KeyDown && isShortcut -> { onLongPress(); true }
+            event.type == KeyEventType.KeyDown && isSelect && (event.nativeKeyEvent as NativeKeyEvent).repeatCount > 0 -> {
+                if (!fired.value) { fired.value = true; onLongPress() }
+                true
+            }
+            event.type == KeyEventType.KeyUp && isSelect && fired.value -> { fired.value = false; true }
+            else -> false
+        }
+    }
+}
 
 /**
  * Lets D-pad Up/Down leave a single-line text field (Compose text fields otherwise swallow them),

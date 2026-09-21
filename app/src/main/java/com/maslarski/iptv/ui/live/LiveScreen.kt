@@ -124,6 +124,10 @@ class LiveTvViewModel @Inject constructor(
 
     fun dismissPin() { pendingUnlock.value = null }
 
+    fun toggleFavorite(channel: Channel) {
+        viewModelScope.launch { content.toggleFavorite(channel.playlistId, channel.id, ContentType.LIVE) }
+    }
+
     fun setReminder(channel: Channel, program: EpgProgram, autoSwitch: Boolean) {
         viewModelScope.launch { reminders.set(channel, program, autoSwitch) }
     }
@@ -183,7 +187,7 @@ fun LiveScreen(isCompact: Boolean, onPlay: (Channel) -> Unit, viewModel: LiveTvV
                     Pill(c.name, c.id == state.selectedCategoryId, locked = c.id in state.lockedCategoryIds) { viewModel.selectCategory(c.id) }
                 }
             }
-            CompactChannelList(state.channels, state.nowPlaying, onPlay, Modifier.fillMaxWidth().padding(horizontal = 20.dp))
+            CompactChannelList(state.channels, state.nowPlaying, onPlay, Modifier.fillMaxWidth().padding(horizontal = 20.dp), onToggleFavorite = viewModel::toggleFavorite)
         }
         else -> LiveGuideColumns(
             categories = state.categories,
@@ -198,6 +202,7 @@ fun LiveScreen(isCompact: Boolean, onPlay: (Channel) -> Unit, viewModel: LiveTvV
             programsFor = viewModel::programsFor,
             reminders = state.reminders,
             onProgramClick = onProgramClick,
+            onToggleFavorite = viewModel::toggleFavorite,
             header = { Text(stringResource(R.string.nav_live), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 4.dp)) },
         )
     }

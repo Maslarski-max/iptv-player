@@ -187,6 +187,10 @@ class PlayerViewModel @Inject constructor(
         playChannel(channel)
     }
 
+    fun toggleFavorite(channel: Channel) {
+        viewModelScope.launch { content.toggleFavorite(channel.playlistId, channel.id, ContentType.LIVE) }
+    }
+
     fun setReminder(channel: Channel, program: EpgProgram, autoSwitch: Boolean) {
         viewModelScope.launch { reminders.set(channel, program, autoSwitch) }
     }

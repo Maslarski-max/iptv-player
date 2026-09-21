@@ -78,6 +78,7 @@ fun PosterCard(
                 .focusGlow(interaction, CardShape)
                 .clip(CardShape)
                 .background(Palette.SurfaceElevated)
+                .dpadLongPress(onLongClick)
                 .combinedClickable(
                     interactionSource = interaction,
                     indication = null,
@@ -166,6 +167,7 @@ fun ChannelCard(
             .focusGlow(interaction, CardShape, focusedScale = 1.05f, glowColor = Palette.ElectricBlue)
             .clip(CardShape)
             .background(Palette.SurfaceElevated)
+            .dpadLongPress(onLongClick)
             .combinedClickable(interactionSource = interaction, indication = null, onClick = onClick, onLongClick = onLongClick)
             .padding(12.dp),
     ) {

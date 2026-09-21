@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -47,8 +48,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -65,6 +66,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -161,8 +165,8 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                     KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { panel = Panel.SETTINGS; true }
                     KeyEvent.KEYCODE_GUIDE, KeyEvent.KEYCODE_TV -> { if (state.isLive) panel = Panel.GUIDE; state.isLive }
                     else -> when (event.key) {
-                        Key.DirectionUp -> if (!controlsVisible && panel == Panel.NONE && state.isLive) { viewModel.channelUp(); true } else false
-                        Key.DirectionDown -> if (!controlsVisible && panel == Panel.NONE && state.isLive) { viewModel.channelDown(); true } else false
+                        // Up/Down are navigation only: they reveal the OSD when hidden and otherwise move focus.
+                        Key.DirectionUp, Key.DirectionDown -> if (!controlsVisible && panel == Panel.NONE) { poke(); true } else false
                         Key.DirectionLeft -> when {
                             controlsVisible || panel != Panel.NONE -> false
                             state.isLive -> { panel = Panel.GUIDE; true }
@@ -240,7 +244,6 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 onTogglePlay = { viewModel.togglePlayPause(); poke() },
                 onSeekBack = { viewModel.seekBack(); poke() },
                 onSeekForward = { viewModel.seekForward(); poke() },
-                onSeek = { viewModel.seekTo(it); poke() },
                 onAspect = { viewModel.cycleAspect(); poke() },
                 onAudio = { panel = Panel.AUDIO; poke() },
                 onSubtitles = { panel = Panel.SUBTITLES; poke() },
@@ -281,6 +284,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 onSelectCategory = viewModel::selectGuideCategory,
                 onPlay = zap,
                 programsFor = viewModel::programsFor,
+                onToggleFavorite = viewModel::toggleFavorite,
                 onProgramClick = { channel, program ->
                     if (program.startMillis > System.currentTimeMillis()) reminderSelection = channel to program else zap(channel)
                 },
@@ -331,7 +335,6 @@ private fun Controls(
     onTogglePlay: () -> Unit,
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
-    onSeek: (Float) -> Unit,
     onAspect: () -> Unit,
     onAudio: () -> Unit,
     onSubtitles: () -> Unit,
@@ -339,23 +342,27 @@ private fun Controls(
     onChannels: () -> Unit,
     onSettings: () -> Unit,
 ) {
+    val timelineFocus = remember { FocusRequester() }
+    val hasTimeline = !state.isLive && state.durationMillis > 0
     Column(Modifier.fillMaxWidth().background(Palette.HeroScrim).padding(horizontal = 32.dp, vertical = 24.dp)) {
-        if (!state.isLive && state.durationMillis > 0) {
+        if (hasTimeline) {
             val fraction = (state.positionMillis.toFloat() / state.durationMillis).coerceIn(0f, 1f)
             val sliderInteraction = rememberInteractionSource()
             val sliderFocused by rememberFocusState(sliderInteraction)
-            val accent by animateColorAsState(if (sliderFocused) Palette.Gold else Palette.NeonPurple, label = "timelineAccent")
+            val timeColor = if (sliderFocused) Palette.ElectricBlue else Palette.Muted
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(formatTime(state.positionMillis), style = MaterialTheme.typography.labelMedium, color = if (sliderFocused) Palette.Gold else Color.Unspecified)
-                Slider(
-                    value = fraction,
-                    onValueChange = onSeek,
-                    interactionSource = sliderInteraction,
-                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
-                        .focusGlow(sliderInteraction, RoundedCornerShape(50), focusedScale = 1f, borderWidth = 2.dp, glowColor = Palette.Gold, animateScale = false),
-                    colors = SliderDefaults.colors(thumbColor = accent, activeTrackColor = accent, inactiveTrackColor = Palette.SurfaceHighest),
+                Text(formatTime(state.positionMillis), style = MaterialTheme.typography.labelMedium, color = timeColor)
+                Timeline(
+                    fraction = fraction,
+                    focused = sliderFocused,
+                    interaction = sliderInteraction,
+                    onSeekBack = onSeekBack,
+                    onSeekForward = onSeekForward,
+                    onTogglePlay = onTogglePlay,
+                    onFocusDown = { runCatching { playFocus.requestFocus() } },
+                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp).focusRequester(timelineFocus),
                 )
-                Text(formatTime(state.durationMillis), style = MaterialTheme.typography.labelMedium, color = if (sliderFocused) Palette.Gold else Color.Unspecified)
+                Text(formatTime(state.durationMillis), style = MaterialTheme.typography.labelMedium, color = timeColor)
             }
         } else if (state.isLive && state.nowPlaying != null) {
             val p = state.nowPlaying
@@ -369,8 +376,18 @@ private fun Controls(
                 Text(formatClock(p.endMillis), style = MaterialTheme.typography.labelMedium)
             }
         }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        Spacer(Modifier.height(20.dp))
+        Row(
+            Modifier.fillMaxWidth().onPreviewKeyEvent { e ->
+                if (hasTimeline && e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp) {
+                    runCatching { timelineFocus.requestFocus() }.isSuccess
+                } else {
+                    false
+                }
+            },
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (!state.isLive) ControlButton(Icons.Filled.Replay10, stringResource(R.string.player_rewind), onSeekBack)
             Spacer(Modifier.width(16.dp))
             ControlButton(
@@ -403,6 +420,52 @@ private fun Controls(
 }
 
 /**
+ * Minimal seek bar: a thin track whose scrubber pin only appears (and glows) while focused.
+ * Left/Right seek, Center toggles playback; Up/Down are left to focus navigation.
+ */
+@Composable
+private fun Timeline(
+    fraction: Float,
+    focused: Boolean,
+    interaction: MutableInteractionSource,
+    onSeekBack: () -> Unit,
+    onSeekForward: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onFocusDown: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val active by animateColorAsState(if (focused) Palette.ElectricBlue else Color.White.copy(alpha = 0.85f), label = "timelineActive")
+    val thumbScale by animateFloatAsState(if (focused) 1f else 0f, label = "timelineThumb")
+    Canvas(
+        modifier
+            .height(28.dp)
+            .focusable(interactionSource = interaction)
+            .onPreviewKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (e.key) {
+                    Key.DirectionLeft -> { onSeekBack(); true }
+                    Key.DirectionRight -> { onSeekForward(); true }
+                    Key.DirectionCenter, Key.Enter -> { onTogglePlay(); true }
+                    Key.DirectionDown -> { onFocusDown(); true }
+                    Key.DirectionUp -> true
+                    else -> false
+                }
+            }
+            .clickable(interactionSource = interaction, indication = null, onClick = onTogglePlay),
+    ) {
+        val trackH = (if (focused) 5.dp else 3.dp).toPx()
+        val y = size.height / 2
+        val x = size.width * fraction
+        drawRoundRect(Color.White.copy(alpha = 0.22f), Offset(0f, y - trackH / 2), Size(size.width, trackH), CornerRadius(trackH))
+        drawRoundRect(active, Offset(0f, y - trackH / 2), Size(x, trackH), CornerRadius(trackH))
+        if (thumbScale > 0f) {
+            drawCircle(Palette.ElectricBlue.copy(alpha = 0.35f * thumbScale), 14.dp.toPx() * thumbScale, Offset(x, y))
+            drawCircle(Color.White, 7.dp.toPx() * thumbScale, Offset(x, y))
+        }
+    }
+}
+
+/**
  * Full-screen translucent zapping overlay: categories | channels | EPG, all over the running stream.
  * Back closes it; picking a channel zaps without leaving the player.
  */
@@ -413,6 +476,7 @@ private fun LiveGuideOverlay(
     onSelectCategory: (String?) -> Unit,
     onPlay: (Channel) -> Unit,
     programsFor: (String) -> Flow<List<EpgProgram>>,
+    onToggleFavorite: (Channel) -> Unit,
     onProgramClick: (Channel, EpgProgram) -> Unit,
 ) {
     Box(Modifier.fillMaxSize().background(Palette.Background.copy(alpha = 0.82f))) {
@@ -429,6 +493,7 @@ private fun LiveGuideOverlay(
             programsFor = programsFor,
             reminders = guide.reminders,
             onProgramClick = onProgramClick,
+            onToggleFavorite = onToggleFavorite,
             translucent = true,
             focusCurrentOnShow = true,
             header = {

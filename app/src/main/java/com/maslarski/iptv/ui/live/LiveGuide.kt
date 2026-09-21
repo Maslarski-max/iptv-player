@@ -2,6 +2,8 @@ package com.maslarski.iptv.ui.live
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import com.maslarski.iptv.ui.components.dpadLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,6 +94,7 @@ fun LiveGuideColumns(
     reminders: Map<String, ReminderEntity>,
     onProgramClick: (Channel, EpgProgram) -> Unit,
     modifier: Modifier = Modifier,
+    onToggleFavorite: ((Channel) -> Unit)? = null,
     translucent: Boolean = false,
     focusCurrentOnShow: Boolean = false,
     header: (@Composable () -> Unit)? = null,
@@ -121,6 +124,7 @@ fun LiveGuideColumns(
             focusCurrentOnShow = focusCurrentOnShow,
             onFocus = { focusedChannel = it },
             onPlay = onPlay,
+            onToggleFavorite = onToggleFavorite,
             modifier = Modifier.weight(1f).fillMaxHeight().padding(top = 24.dp, end = 12.dp),
         )
 
@@ -142,8 +146,9 @@ fun CompactChannelList(
     nowPlaying: Map<String, EpgProgram>,
     onPlay: (Channel) -> Unit,
     modifier: Modifier = Modifier,
+    onToggleFavorite: ((Channel) -> Unit)? = null,
 ) {
-    ChannelColumn(channels, nowPlaying, currentChannelId = null, focusCurrentOnShow = false, onFocus = {}, onPlay = onPlay, modifier = modifier)
+    ChannelColumn(channels, nowPlaying, currentChannelId = null, focusCurrentOnShow = false, onFocus = {}, onPlay = onPlay, onToggleFavorite = onToggleFavorite, modifier = modifier)
 }
 
 @Composable
@@ -154,6 +159,7 @@ private fun ChannelColumn(
     focusCurrentOnShow: Boolean,
     onFocus: (Channel) -> Unit,
     onPlay: (Channel) -> Unit,
+    onToggleFavorite: ((Channel) -> Unit)?,
     modifier: Modifier,
 ) {
     val listState: LazyListState = rememberLazyListState()
@@ -177,6 +183,7 @@ private fun ChannelColumn(
                 modifier = if (index == currentIndex) Modifier.focusRequester(currentFocus) else Modifier,
                 onFocus = { onFocus(channel) },
                 onClick = { onPlay(channel) },
+                onLongClick = onToggleFavorite?.let { cb -> { cb(channel) } },
             )
         }
     }
@@ -191,6 +198,7 @@ private fun ChannelRow(
     modifier: Modifier,
     onFocus: () -> Unit,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
 ) {
     val interaction = rememberInteractionSource()
     val focused by rememberFocusState(interaction)
@@ -206,7 +214,8 @@ private fun ChannelRow(
                     else -> Color.White.copy(alpha = 0.05f)
                 },
             )
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .dpadLongPress(onLongClick)
+            .combinedClickable(interactionSource = interaction, indication = null, onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
