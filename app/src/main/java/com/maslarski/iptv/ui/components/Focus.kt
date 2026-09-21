@@ -101,11 +101,15 @@ fun Modifier.dpadFocusable(interactionSource: MutableInteractionSource): Modifie
  */
 class DpadLongPressState internal constructor() {
     internal var fired = false
-    internal var suppressClick = false
+    internal var releasedAt = 0L
 
-    /** Wraps a normal click so it is ignored once right after a long press. */
+    /** Wraps a normal click so the one produced by releasing a long press is ignored. */
     fun click(action: () -> Unit): () -> Unit = {
-        if (suppressClick) suppressClick = false else action()
+        if (System.currentTimeMillis() - releasedAt > SUPPRESS_WINDOW_MS) action()
+    }
+
+    private companion object {
+        const val SUPPRESS_WINDOW_MS = 400L
     }
 }
 
@@ -129,7 +133,7 @@ fun Modifier.dpadLongPress(state: DpadLongPressState, onLongPress: (() -> Unit)?
             }
             event.type == KeyEventType.KeyUp && isSelect && state.fired -> {
                 state.fired = false
-                state.suppressClick = true
+                state.releasedAt = System.currentTimeMillis()
                 false
             }
             else -> false
