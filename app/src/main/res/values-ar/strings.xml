@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">IPTV Player</string>
+    <string name="app_name">MaxTV Player</string>
     <string name="nav_home">الرئيسية</string>
     <string name="nav_live">البث المباشر</string>
     <string name="nav_movies">الأفلام</string>
@@ -15,7 +15,7 @@
     <string name="home_recent_movies">أفلام مضافة حديثاً</string>
     <string name="home_recent_series">مسلسلات مضافة حديثاً</string>
     <string name="home_live_now">مباشر الآن</string>
-    <string name="home_empty_title">مرحباً بك في IPTV Player</string>
+    <string name="home_empty_title">مرحباً بك في MaxTV Player</string>
     <string name="home_empty_body">أضف قائمة تشغيل M3U أو Xtream Codes لبدء المشاهدة.</string>
     <string name="action_add_playlist">إضافة قائمة تشغيل</string>
     <string name="action_play">تشغيل</string>
@@ -199,7 +199,7 @@
     <string name="account_verification">التحقق</string>
     <string name="account_verified_server">تم التحقق من الخادم</string>
     <string name="account_verified_local">محلي فقط (بدون اتصال)</string>
-    <string name="activation_title">افتح IPTV Player بريميوم</string>
+    <string name="activation_title">افتح MaxTV Player بريميوم</string>
     <string name="activation_expired_body">انتهت فترتك التجريبية المجانية لمدة 7 أيام. اختر باقة وأدخل مفتاح التفعيل لمتابعة المشاهدة.</string>
     <string name="activation_trial_body">فترتك التجريبية نشطة – متبقٍ %1$d يومًا. فعّل الآن لإبقاء كل شيء مفتوحًا.</string>
     <string name="activation_active_body">اشتراكك نشط حتى %1$s.</string>

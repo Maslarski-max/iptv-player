@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">IPTV Player</string>
+    <string name="app_name">MaxTV Player</string>
     <string name="nav_home">Home</string>
     <string name="nav_live">TV in diretta</string>
     <string name="nav_movies">Film</string>
@@ -15,7 +15,7 @@
     <string name="home_recent_movies">Film aggiunti di recente</string>
     <string name="home_recent_series">Serie aggiunte di recente</string>
     <string name="home_live_now">In onda ora</string>
-    <string name="home_empty_title">Benvenuto in IPTV Player</string>
+    <string name="home_empty_title">Benvenuto in MaxTV Player</string>
     <string name="home_empty_body">Aggiungi una playlist M3U o Xtream Codes per iniziare a guardare.</string>
     <string name="action_add_playlist">Aggiungi playlist</string>
     <string name="action_play">Riproduci</string>
@@ -199,7 +199,7 @@
     <string name="account_verification">Verifica</string>
     <string name="account_verified_server">Verificato dal server</string>
     <string name="account_verified_local">Solo locale (offline)</string>
-    <string name="activation_title">Sblocca IPTV Player Premium</string>
+    <string name="activation_title">Sblocca MaxTV Player Premium</string>
     <string name="activation_expired_body">La tua prova gratuita di 7 giorni è terminata. Scegli un pacchetto e inserisci la chiave di attivazione per continuare a guardare.</string>
     <string name="activation_trial_body">La tua prova gratuita è attiva – %1$d giorni rimanenti. Attiva ora per mantenere tutto sbloccato.</string>
     <string name="activation_active_body">Il tuo abbonamento è attivo fino al %1$s.</string>

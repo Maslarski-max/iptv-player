@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">IPTV Player</string>
+    <string name="app_name">MaxTV Player</string>
     <string name="nav_home">Ana Sayfa</string>
     <string name="nav_live">Canlı TV</string>
     <string name="nav_movies">Filmler</string>
@@ -15,7 +15,7 @@
     <string name="home_recent_movies">Yeni Eklenen Filmler</string>
     <string name="home_recent_series">Yeni Eklenen Diziler</string>
     <string name="home_live_now">Şimdi Canlı</string>
-    <string name="home_empty_title">IPTV Player’a Hoş Geldiniz</string>
+    <string name="home_empty_title">MaxTV Player’a Hoş Geldiniz</string>
     <string name="home_empty_body">İzlemeye başlamak için bir M3U veya Xtream Codes oynatma listesi ekleyin.</string>
     <string name="action_add_playlist">Oynatma listesi ekle</string>
     <string name="action_play">Oynat</string>
@@ -199,7 +199,7 @@
     <string name="account_verification">Doğrulama</string>
     <string name="account_verified_server">Sunucu tarafından doğrulandı</string>
     <string name="account_verified_local">Yalnızca yerel (çevrimdışı)</string>
-    <string name="activation_title">IPTV Player Premium’un kilidini aç</string>
+    <string name="activation_title">MaxTV Player Premium’un kilidini aç</string>
     <string name="activation_expired_body">7 günlük ücretsiz denemeniz sona erdi. İzlemeye devam etmek için bir paket seçin ve etkinleştirme anahtarınızı girin.</string>
     <string name="activation_trial_body">Ücretsiz denemeniz etkin – %1$d gün kaldı. Her şeyi açık tutmak için şimdi etkinleştirin.</string>
     <string name="activation_active_body">Aboneliğiniz %1$s tarihine kadar etkin.</string>

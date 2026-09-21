@@ -1,4 +1,4 @@
-# IPTV Player
+# MaxTV Player
 
 Modern Android IPTV client built with Kotlin, Jetpack Compose and Media3. Designed first for
 Android TV / Fire TV (D-pad navigation, focus glow, cinematic dark theme) and adaptive for

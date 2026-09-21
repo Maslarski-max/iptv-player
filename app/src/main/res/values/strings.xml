@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">IPTV Player</string>
+    <string name="app_name">MaxTV Player</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -19,7 +19,7 @@
     <string name="home_recent_movies">Recently Added Movies</string>
     <string name="home_recent_series">Recently Added Series</string>
     <string name="home_live_now">Live Now</string>
-    <string name="home_empty_title">Welcome to IPTV Player</string>
+    <string name="home_empty_title">Welcome to MaxTV Player</string>
     <string name="home_empty_body">Add an M3U or Xtream Codes playlist to start watching.</string>
     <string name="action_add_playlist">Add playlist</string>
     <string name="action_play">Play</string>
@@ -236,7 +236,7 @@
     <string name="account_verified_local">Local only (offline)</string>
 
     <!-- Activation screen -->
-    <string name="activation_title">Unlock IPTV Player Premium</string>
+    <string name="activation_title">Unlock MaxTV Player Premium</string>
     <string name="activation_expired_body">Your 7-day free trial has ended. Choose a package and enter your activation key to keep watching.</string>
     <string name="activation_trial_body">Your free trial is active – %1$d days left. Activate now to keep everything unlocked.</string>
     <string name="activation_active_body">Your subscription is active until %1$s.</string>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">IPTV Player</string>
+    <string name="app_name">MaxTV Player</string>
     <string name="nav_home">Start</string>
     <string name="nav_live">Live-TV</string>
     <string name="nav_movies">Filme</string>
@@ -15,7 +15,7 @@
     <string name="home_recent_movies">Kürzlich hinzugefügte Filme</string>
     <string name="home_recent_series">Kürzlich hinzugefügte Serien</string>
     <string name="home_live_now">Jetzt live</string>
-    <string name="home_empty_title">Willkommen bei IPTV Player</string>
+    <string name="home_empty_title">Willkommen bei MaxTV Player</string>
     <string name="home_empty_body">Füge eine M3U- oder Xtream-Codes-Playlist hinzu, um loszulegen.</string>
     <string name="action_add_playlist">Playlist hinzufügen</string>
     <string name="action_play">Abspielen</string>
@@ -199,7 +199,7 @@
     <string name="account_verification">Überprüfung</string>
     <string name="account_verified_server">Vom Server bestätigt</string>
     <string name="account_verified_local">Nur lokal (offline)</string>
-    <string name="activation_title">IPTV Player Premium freischalten</string>
+    <string name="activation_title">MaxTV Player Premium freischalten</string>
     <string name="activation_expired_body">Deine 7-tägige Testphase ist beendet. Wähle ein Paket und gib deinen Aktivierungsschlüssel ein, um weiterzuschauen.</string>
     <string name="activation_trial_body">Deine Testphase ist aktiv – noch %1$d Tage. Aktiviere jetzt, um alles freigeschaltet zu behalten.</string>
     <string name="activation_active_body">Dein Abo ist aktiv bis %1$s.</string>

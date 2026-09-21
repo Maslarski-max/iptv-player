@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">IPTV Player</string>
+    <string name="app_name">MaxTV Player</string>
     <string name="nav_home">Почетна</string>
     <string name="nav_live">ТВ во живо</string>
     <string name="nav_movies">Филмови</string>
@@ -15,7 +15,7 @@
     <string name="home_recent_movies">Неодамна додадени филмови</string>
     <string name="home_recent_series">Неодамна додадени серии</string>
     <string name="home_live_now">Во живо сега</string>
-    <string name="home_empty_title">Добредојдовте во IPTV Player</string>
+    <string name="home_empty_title">Добредојдовте во MaxTV Player</string>
     <string name="home_empty_body">Додадете M3U или Xtream Codes плејлиста за да почнете да гледате.</string>
     <string name="action_add_playlist">Додај плејлиста</string>
     <string name="action_play">Пушти</string>
@@ -199,7 +199,7 @@
     <string name="account_verification">Верификација</string>
     <string name="account_verified_server">Потврдено од сервер</string>
     <string name="account_verified_local">Само локално (офлајн)</string>
-    <string name="activation_title">Отклучи IPTV Player Премиум</string>
+    <string name="activation_title">Отклучи MaxTV Player Премиум</string>
     <string name="activation_expired_body">Вашиот бесплатен пробен период од 7 дена заврши. Изберете пакет и внесете го клучот за активација за да продолжите со гледање.</string>
     <string name="activation_trial_body">Вашиот пробен период е активен – преостануваат уште %1$d дена. Активирајте сега за сè да остане отклучено.</string>
     <string name="activation_active_body">Вашата претплата е активна до %1$s.</string>

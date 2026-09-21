@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">IPTV Player</string>
+    <string name="app_name">MaxTV Player</string>
     <string name="nav_home">Početna</string>
     <string name="nav_live">TV uživo</string>
     <string name="nav_movies">Filmovi</string>
@@ -15,7 +15,7 @@
     <string name="home_recent_movies">Nedavno dodani filmovi</string>
     <string name="home_recent_series">Nedavno dodane serije</string>
     <string name="home_live_now">Uživo sada</string>
-    <string name="home_empty_title">Dobrodošli u IPTV Player</string>
+    <string name="home_empty_title">Dobrodošli u MaxTV Player</string>
     <string name="home_empty_body">Dodajte M3U ili Xtream Codes plejlistu da biste počeli gledati.</string>
     <string name="action_add_playlist">Dodaj plejlistu</string>
     <string name="action_play">Pusti</string>
@@ -199,7 +199,7 @@
     <string name="account_verification">Verifikacija</string>
     <string name="account_verified_server">Potvrđeno od servera</string>
     <string name="account_verified_local">Samo lokalno (van mreže)</string>
-    <string name="activation_title">Otključaj IPTV Player Premium</string>
+    <string name="activation_title">Otključaj MaxTV Player Premium</string>
     <string name="activation_expired_body">Vaš besplatni probni period od 7 dana je završen. Izaberite paket i unesite aktivacioni ključ da nastavite gledanje.</string>
     <string name="activation_trial_body">Vaš probni period je aktivan – preostalo je još %1$d dana. Aktivirajte sada da sve ostane otključano.</string>
     <string name="activation_active_body">Vaša pretplata je aktivna do %1$s.</string>
