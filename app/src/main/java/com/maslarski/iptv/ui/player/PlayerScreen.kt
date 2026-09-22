@@ -58,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -122,10 +123,12 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
 
     fun poke() { lastInteraction = System.currentTimeMillis(); controlsVisible = true }
 
-    LaunchedEffect(lastInteraction, state.isPlaying, panel) {
+    // Buffering never shows or keeps the OSD open: only an explicit pause holds the controls on screen.
+    val latestState by rememberUpdatedState(state)
+    LaunchedEffect(lastInteraction, panel) {
         if (panel != Panel.NONE) return@LaunchedEffect
         delay(OSD_TIMEOUT_MS)
-        if (state.isPlaying) controlsVisible = false
+        if (latestState.isPlaying || latestState.isBuffering) controlsVisible = false
     }
     LaunchedEffect(controlsVisible, panel) {
         if (panel != Panel.NONE) return@LaunchedEffect
@@ -136,7 +139,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     BackHandler {
         when {
             panel != Panel.NONE -> panel = Panel.NONE
-            controlsVisible && state.isPlaying -> controlsVisible = false
+            controlsVisible && (state.isPlaying || state.isBuffering) -> controlsVisible = false
             else -> onBack()
         }
     }
@@ -189,7 +192,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 if (panel == Panel.NONE && (handled || controlsVisible)) poke()
                 handled
             }
-            .clickable(interactionSource = null, indication = null) { if (controlsVisible && state.isPlaying) controlsVisible = false else poke() },
+            .clickable(interactionSource = null, indication = null) { if (controlsVisible && (state.isPlaying || state.isBuffering)) controlsVisible = false else poke() },
     ) {
         AndroidView(
             factory = { ctx ->
@@ -393,7 +396,7 @@ private fun Controls(
             ControlButton(
                 if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 stringResource(if (state.isPlaying) R.string.player_pause else R.string.player_play),
-                onTogglePlay, size = 72.dp, modifier = Modifier.focusRequester(playFocus), primary = true,
+                onTogglePlay, size = 72.dp, modifier = Modifier.focusRequester(playFocus),
             )
             Spacer(Modifier.width(16.dp))
             if (!state.isLive) ControlButton(Icons.Filled.Forward30, stringResource(R.string.player_forward), onSeekForward)
@@ -561,17 +564,17 @@ private fun ControlButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 52.dp,
-    primary: Boolean = false,
 ) {
     val interaction = rememberInteractionSource()
+    val focused by rememberFocusState(interaction)
     Box(
         modifier.size(size)
-            .focusGlow(interaction, CircleShape, focusedScale = 1.12f, borderWidth = 2.dp, glowColor = if (primary) Palette.NeonPurple else Palette.ElectricBlue)
+            .focusGlow(interaction, CircleShape, focusedScale = 1.12f, borderWidth = 2.dp, glowColor = Palette.ElectricBlue)
             .clip(CircleShape)
-            .background(if (primary) Palette.NeonPurple else Color.White.copy(alpha = 0.12f))
+            .background(Color.White.copy(alpha = if (focused) 0.22f else 0.12f))
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, label, tint = Color.White, modifier = Modifier.size(size / 2)) }
+    ) { Icon(icon, label, tint = if (focused) Palette.ElectricBlue else Color.White, modifier = Modifier.size(size / 2)) }
 }
 
 @Composable

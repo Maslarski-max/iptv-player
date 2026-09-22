@@ -14,7 +14,10 @@ import androidx.media3.common.TrackGroup
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import java.util.concurrent.TimeUnit
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -126,10 +129,28 @@ class PlayerViewModel @Inject constructor(
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF),
     )
         .setTrackSelector(trackSelector)
+        .setLoadControl(
+            DefaultLoadControl.Builder()
+                .setBufferDurationsMs(MIN_BUFFER_MS, MAX_BUFFER_MS, BUFFER_FOR_PLAYBACK_MS, BUFFER_AFTER_REBUFFER_MS)
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build(),
+        )
         .setMediaSourceFactory(
-            DefaultMediaSourceFactory(context).setDataSourceFactory(
-                OkHttpDataSource.Factory(okHttp).setUserAgent("IPTVPlayer/1.0 (Android)"),
-            ),
+            DefaultMediaSourceFactory(context)
+                .setDataSourceFactory(
+                    DefaultDataSource.Factory(
+                        context,
+                        OkHttpDataSource.Factory(
+                            okHttp.newBuilder()
+                                .connectTimeout(NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                                .readTimeout(NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                                .followRedirects(true)
+                                .followSslRedirects(true)
+                                .build(),
+                        ).setUserAgent("IPTVPlayer/1.0 (Android)"),
+                    ),
+                )
+                .setLiveTargetOffsetMs(LIVE_TARGET_OFFSET_MS),
         )
         .setHandleAudioBecomingNoisy(true)
         .setSeekBackIncrementMs(10_000)
@@ -471,3 +492,10 @@ class PlayerViewModel @Inject constructor(
 
     companion object { const val MAX_RECONNECTS = 8 }
 }
+
+private const val MIN_BUFFER_MS = 5_000
+private const val MAX_BUFFER_MS = 15_000
+private const val BUFFER_FOR_PLAYBACK_MS = 2_500
+private const val BUFFER_AFTER_REBUFFER_MS = 4_000
+private const val NETWORK_TIMEOUT_MS = 15_000L
+private const val LIVE_TARGET_OFFSET_MS = 6_000L
