@@ -10,6 +10,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.sentry.okhttp.SentryOkHttpInterceptor
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -50,6 +51,7 @@ object AppModule {
         .addInterceptor { chain ->
             chain.proceed(chain.request().newBuilder().header("User-Agent", USER_AGENT).build())
         }
+        .addInterceptor(SentryOkHttpInterceptor())
         .build()
 
     @Provides

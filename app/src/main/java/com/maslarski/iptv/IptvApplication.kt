@@ -46,6 +46,9 @@ class IptvApplication : Application(), Configuration.Provider, SingletonImageLoa
             options.environment = if (BuildConfig.DEBUG) "debug" else "production"
             options.release = "${BuildConfig.APPLICATION_ID}@${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}"
             options.isEnableAutoSessionTracking = true
+            options.tracesSampleRate = if (BuildConfig.DEBUG) 1.0 else 0.2
+            options.isEnableAutoActivityLifecycleTracing = true
+            options.isEnableAppStartProfiling = false
             options.isAttachScreenshot = false
         }
         appScope.launch {

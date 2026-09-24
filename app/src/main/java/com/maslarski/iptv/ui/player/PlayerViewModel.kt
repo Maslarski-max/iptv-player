@@ -17,6 +17,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import io.sentry.okhttp.SentryOkHttpInterceptor
 import java.util.concurrent.TimeUnit
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -142,6 +143,7 @@ class PlayerViewModel @Inject constructor(
                         context,
                         OkHttpDataSource.Factory(
                             okHttp.newBuilder()
+                        .apply { interceptors().removeAll { it is SentryOkHttpInterceptor } }
                                 .connectTimeout(NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                                 .readTimeout(NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                                 .followRedirects(true)

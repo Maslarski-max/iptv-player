@@ -164,6 +164,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.analytics)
     implementation(libs.sentry.android)
+    implementation(libs.sentry.okhttp)
     implementation(libs.play.billing)
     implementation(libs.kotlinx.coroutines.play.services)
 
