@@ -16,6 +16,7 @@ import com.maslarski.iptv.data.sync.SyncScheduler
 import com.maslarski.iptv.domain.license.LicenseRepository
 import com.maslarski.iptv.domain.reminder.ReminderManager
 import dagger.hilt.android.HiltAndroidApp
+import io.sentry.android.core.SentryAndroid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,6 +41,13 @@ class IptvApplication : Application(), Configuration.Provider, SingletonImageLoa
 
     override fun onCreate() {
         super.onCreate()
+        SentryAndroid.init(this) { options ->
+            options.dsn = BuildConfig.SENTRY_DSN
+            options.environment = if (BuildConfig.DEBUG) "debug" else "production"
+            options.release = "${BuildConfig.APPLICATION_ID}@${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}"
+            options.isEnableAutoSessionTracking = true
+            options.isAttachScreenshot = false
+        }
         appScope.launch {
             license.ensureTrialStarted()
             license.syncRemote()

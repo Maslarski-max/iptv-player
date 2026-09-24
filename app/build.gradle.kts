@@ -21,6 +21,14 @@ val tmdbApiKey: String = run {
     (fromFile ?: System.getenv("TMDB_API_KEY") ?: "").trim()
 }
 
+val sentryDsn = "https://466d7ed616d7f85f6f5c40e65031d675@o4512127693619200.ingest.de.sentry.io/4512127700238416"
+
+// Release signing: keystore.properties (git-ignored) with storeFile/storePassword/keyAlias/keyPassword.
+// Falls back to the debug keystore when absent so `assembleRelease` always produces an installable APK.
+val releaseSigning: Properties? = rootProject.file("keystore.properties")
+    .takeIf { it.exists() }
+    ?.let { f -> Properties().apply { f.inputStream().use(::load) } }
+
 android {
     namespace = "com.maslarski.iptv"
     compileSdk = 37
@@ -38,6 +46,18 @@ android {
 
         buildConfigField("String", "TMDB_API_KEY", "\"$tmdbApiKey\"")
         buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
+        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
+    }
+
+    signingConfigs {
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = rootProject.file(releaseSigning.getProperty("storeFile"))
+                storePassword = releaseSigning.getProperty("storePassword")
+                keyAlias = releaseSigning.getProperty("keyAlias")
+                keyPassword = releaseSigning.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -45,6 +65,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = if (releaseSigning != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 
@@ -142,6 +163,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.analytics)
+    implementation(libs.sentry.android)
     implementation(libs.play.billing)
     implementation(libs.kotlinx.coroutines.play.services)
 
