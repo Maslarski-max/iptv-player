@@ -1,5 +1,6 @@
 package com.maslarski.iptv.data.local
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
@@ -11,7 +12,9 @@ import com.maslarski.iptv.data.local.dao.EpisodeDao
 import com.maslarski.iptv.data.local.dao.FavoriteDao
 import com.maslarski.iptv.data.local.dao.MovieDao
 import com.maslarski.iptv.data.local.dao.PlaylistDao
+import com.maslarski.iptv.data.local.dao.ReminderDao
 import com.maslarski.iptv.data.local.dao.SeriesDao
+import com.maslarski.iptv.data.local.dao.TmdbMetadataDao
 import com.maslarski.iptv.data.local.dao.WatchProgressDao
 import com.maslarski.iptv.data.local.entity.CategoryEntity
 import com.maslarski.iptv.data.local.entity.ChannelEntity
@@ -20,7 +23,9 @@ import com.maslarski.iptv.data.local.entity.EpisodeEntity
 import com.maslarski.iptv.data.local.entity.FavoriteEntity
 import com.maslarski.iptv.data.local.entity.MovieEntity
 import com.maslarski.iptv.data.local.entity.PlaylistEntity
+import com.maslarski.iptv.data.local.entity.ReminderEntity
 import com.maslarski.iptv.data.local.entity.SeriesEntity
+import com.maslarski.iptv.data.local.entity.TmdbMetadataEntity
 import com.maslarski.iptv.data.local.entity.WatchProgressEntity
 import com.maslarski.iptv.domain.model.ContentType
 import com.maslarski.iptv.domain.model.PlaylistType
@@ -43,9 +48,12 @@ class Converters {
         EpgProgramEntity::class,
         FavoriteEntity::class,
         WatchProgressEntity::class,
+        TmdbMetadataEntity::class,
+        ReminderEntity::class,
     ],
-    version = 1,
+    version = 3,
     exportSchema = true,
+    autoMigrations = [AutoMigration(from = 2, to = 3)],
 )
 @TypeConverters(Converters::class)
 abstract class IptvDatabase : RoomDatabase() {
@@ -58,6 +66,8 @@ abstract class IptvDatabase : RoomDatabase() {
     abstract fun epgDao(): EpgDao
     abstract fun favoriteDao(): FavoriteDao
     abstract fun watchProgressDao(): WatchProgressDao
+    abstract fun tmdbMetadataDao(): TmdbMetadataDao
+    abstract fun reminderDao(): ReminderDao
 
     companion object {
         const val NAME = "iptv.db"

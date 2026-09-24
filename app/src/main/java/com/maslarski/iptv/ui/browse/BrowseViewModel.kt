@@ -109,25 +109,6 @@ abstract class BrowseViewModel(
 }
 
 @HiltViewModel
-class LiveViewModel @Inject constructor(
-    playlists: PlaylistRepository, content: ContentRepository, gate: ParentalGate,
-) : BrowseViewModel(ContentType.LIVE, playlists, content, gate) {
-    override fun items(playlistId: Long, categoryId: String?): Flow<List<MediaItem>> =
-        content.channels(playlistId, categoryId).map { list ->
-            list.map { c ->
-                MediaItem(
-                    id = c.id, playlistId = c.playlistId, type = ContentType.LIVE, title = c.name, imageUrl = c.logoUrl,
-                    subtitle = c.epgChannelId, streamUrl = c.streamUrl, categoryId = c.categoryId,
-                    channelNumber = c.channelNumber, isFavorite = c.isFavorite,
-                )
-            }
-        }
-
-    override fun nowPlaying(items: List<MediaItem>): Flow<Map<String, EpgProgram>> =
-        content.nowPlaying(items.mapNotNull { it.subtitle }.take(400))
-}
-
-@HiltViewModel
 class MoviesViewModel @Inject constructor(
     playlists: PlaylistRepository, content: ContentRepository, gate: ParentalGate,
 ) : BrowseViewModel(ContentType.MOVIE, playlists, content, gate) {

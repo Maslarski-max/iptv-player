@@ -38,6 +38,7 @@ class ContentRepository @Inject constructor(
     private val db: IptvDatabase,
     private val xtream: XtreamClient,
     private val playlists: PlaylistRepository,
+    private val enricher: MetadataEnricher,
 ) {
     // ------------------------------------------------------------ categories
 
@@ -69,8 +70,20 @@ class ContentRepository @Inject constructor(
         }
     }
 
+    /** Favorite live channels in the order they were added (matches the Favorites screen). */
+    fun favoriteChannels(playlistId: Long): Flow<List<Channel>> =
+        db.favoriteDao().observeByType(playlistId, ContentType.LIVE).flatMapLatest { favs ->
+            if (favs.isEmpty()) return@flatMapLatest flowOf(emptyList())
+            val order = favs.withIndex().associate { (i, f) -> f.contentId to i }
+            db.channelDao().observeByIds(playlistId, favs.map { it.contentId }).map { list ->
+                list.sortedBy { order[it.id] ?: Int.MAX_VALUE }.map { it.toDomain(isFavorite = true) }
+            }
+        }
+
     fun featuredChannels(playlistId: Long, limit: Int = 12): Flow<List<Channel>> =
-        db.channelDao().observeFirst(playlistId, limit).map { list -> list.map { it.toDomain() } }
+        combine(db.channelDao().observeFirst(playlistId, limit), favoriteIds(playlistId, ContentType.LIVE)) { list, favs ->
+            list.map { it.toDomain(isFavorite = it.id in favs) }
+        }
 
     suspend fun channel(playlistId: Long, id: String): Channel? = db.channelDao().getById(playlistId, id)?.toDomain()
 
@@ -98,7 +111,9 @@ class ContentRepository @Inject constructor(
     }
 
     fun recentMovies(playlistId: Long, limit: Int = 20): Flow<List<Movie>> =
-        db.movieDao().observeRecent(playlistId, limit).map { list -> list.map { it.toDomain() } }
+        combine(db.movieDao().observeRecent(playlistId, limit), favoriteIds(playlistId, ContentType.MOVIE)) { list, favs ->
+            list.map { it.toDomain(isFavorite = it.id in favs) }
+        }
 
     fun topRatedMovies(playlistId: Long, limit: Int = 10): Flow<List<Movie>> =
         db.movieDao().observeTopRated(playlistId, limit).map { list -> list.map { it.toDomain() } }
@@ -110,9 +125,11 @@ class ContentRepository @Inject constructor(
 
     suspend fun refreshMovieDetails(playlistId: Long, id: String) {
         val playlist = playlists.getById(playlistId) ?: return
-        if (playlist.type != PlaylistType.XTREAM) return
-        val existing = db.movieDao().getById(playlistId, id) ?: return
-        runCatching { xtream.movieDetails(playlist, existing) }.onSuccess { db.movieDao().insertAll(listOf(it)) }
+        if (playlist.type == PlaylistType.XTREAM) {
+            val existing = db.movieDao().getById(playlistId, id) ?: return
+            runCatching { xtream.movieDetails(playlist, existing) }.onSuccess { db.movieDao().insertAll(listOf(it)) }
+        }
+        enricher.enrichMovie(playlistId, id)
     }
 
     // ------------------------------------------------------------ series
@@ -126,7 +143,9 @@ class ContentRepository @Inject constructor(
     }
 
     fun recentSeries(playlistId: Long, limit: Int = 20): Flow<List<Series>> =
-        db.seriesDao().observeRecent(playlistId, limit).map { list -> list.map { it.toDomain() } }
+        combine(db.seriesDao().observeRecent(playlistId, limit), favoriteIds(playlistId, ContentType.SERIES)) { list, favs ->
+            list.map { it.toDomain(isFavorite = it.id in favs) }
+        }
 
     fun seriesById(playlistId: Long, id: String): Flow<Series?> = combine(
         db.seriesDao().observeById(playlistId, id),
@@ -143,15 +162,18 @@ class ContentRepository @Inject constructor(
 
     suspend fun refreshSeriesDetails(playlistId: Long, seriesId: String, force: Boolean = false) {
         val playlist = playlists.getById(playlistId) ?: return
-        if (playlist.type != PlaylistType.XTREAM) return
-        val existing = db.seriesDao().getById(playlistId, seriesId) ?: return
-        val stale = existing.detailsFetchedAt?.let { System.currentTimeMillis() - it > 6 * 60 * 60 * 1000L } ?: true
-        if (!stale && !force) return
-        runCatching { xtream.seriesDetails(playlist, existing) }.onSuccess { details ->
-            db.episodeDao().deleteForSeries(playlistId, seriesId)
-            db.episodeDao().insertAll(details.episodes)
-            db.seriesDao().insertAll(listOf(details.series))
+        if (playlist.type == PlaylistType.XTREAM) {
+            val existing = db.seriesDao().getById(playlistId, seriesId) ?: return
+            val stale = existing.detailsFetchedAt?.let { System.currentTimeMillis() - it > 6 * 60 * 60 * 1000L } ?: true
+            if (stale || force) {
+                runCatching { xtream.seriesDetails(playlist, existing) }.onSuccess { details ->
+                    db.episodeDao().deleteForSeries(playlistId, seriesId)
+                    db.episodeDao().insertAll(details.episodes)
+                    db.seriesDao().insertAll(listOf(details.series))
+                }
+            }
         }
+        enricher.enrichSeries(playlistId, seriesId)
     }
 
     suspend fun episode(playlistId: Long, id: String): Episode? = db.episodeDao().getById(playlistId, id)?.toDomain()

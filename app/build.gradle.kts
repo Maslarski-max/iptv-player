@@ -1,14 +1,38 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services) apply false
 }
+
+// google-services.json comes from the Firebase console and is git-ignored. Without it the app still
+// builds and runs; Firebase-backed features fall back to local-only behaviour at runtime.
+val hasFirebaseConfig = file("google-services.json").exists()
+if (hasFirebaseConfig) apply(plugin = libs.plugins.google.services.get().pluginId)
+
+// TMDB key is read from local.properties (git-ignored) or the TMDB_API_KEY env var; never committed.
+val tmdbApiKey: String = run {
+    val local = rootProject.file("local.properties")
+    val fromFile = if (local.exists()) Properties().apply { local.inputStream().use(::load) }.getProperty("tmdb.apiKey") else null
+    (fromFile ?: System.getenv("TMDB_API_KEY") ?: "").trim()
+}
+
+val sentryDsn = "https://466d7ed616d7f85f6f5c40e65031d675@o4512127693619200.ingest.de.sentry.io/4512127700238416"
+
+// Release signing: keystore.properties (git-ignored) with storeFile/storePassword/keyAlias/keyPassword.
+// Falls back to the debug keystore when absent so `assembleRelease` always produces an installable APK.
+val releaseSigning: Properties? = rootProject.file("keystore.properties")
+    .takeIf { it.exists() }
+    ?.let { f -> Properties().apply { f.inputStream().use(::load) } }
 
 android {
     namespace = "com.maslarski.iptv"
-    compileSdk = 36
+    compileSdk = 37
+    compileSdkMinor = 2
 
     defaultConfig {
         applicationId = "com.maslarski.iptv"
@@ -19,6 +43,21 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        buildConfigField("String", "TMDB_API_KEY", "\"$tmdbApiKey\"")
+        buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
+        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
+    }
+
+    signingConfigs {
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = rootProject.file(releaseSigning.getProperty("storeFile"))
+                storePassword = releaseSigning.getProperty("storePassword")
+                keyAlias = releaseSigning.getProperty("keyAlias")
+                keyPassword = releaseSigning.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -26,6 +65,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = if (releaseSigning != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 
@@ -36,6 +76,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     androidResources {
@@ -55,7 +96,6 @@ kotlin {
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
             "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
             "-opt-in=androidx.tv.material3.ExperimentalTvMaterial3Api",
-            "-opt-in=androidx.media3.common.util.UnstableApi",
         )
     }
 }
@@ -119,6 +159,14 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.analytics)
+    implementation(libs.sentry.android)
+    implementation(libs.sentry.okhttp)
+    implementation(libs.play.billing)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

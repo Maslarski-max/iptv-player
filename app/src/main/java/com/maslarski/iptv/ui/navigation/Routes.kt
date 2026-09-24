@@ -7,7 +7,6 @@ sealed interface Route {
     @Serializable data object Live : Route
     @Serializable data object Movies : Route
     @Serializable data object Series : Route
-    @Serializable data object Guide : Route
     @Serializable data object Search : Route
     @Serializable data object Favorites : Route
     @Serializable data object Settings : Route
@@ -20,5 +19,7 @@ sealed interface Route {
         val contentId: String,
         val contentType: String,
         val categoryId: String? = null,
+        val favoritesOnly: Boolean = false,
     ) : Route
+    @Serializable data object Activation : Route
 }

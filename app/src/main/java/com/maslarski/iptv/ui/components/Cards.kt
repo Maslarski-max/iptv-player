@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -68,6 +69,7 @@ fun PosterCard(
     onLongClick: (() -> Unit)? = null,
 ) {
     val interaction = rememberInteractionSource()
+    val longPress = rememberDpadLongPressState()
     val focused by rememberFocusState(interaction)
     Column(modifier = modifier.width(width)) {
         Box(
@@ -77,10 +79,11 @@ fun PosterCard(
                 .focusGlow(interaction, CardShape)
                 .clip(CardShape)
                 .background(Palette.SurfaceElevated)
+                .dpadLongPress(longPress, onLongClick)
                 .combinedClickable(
                     interactionSource = interaction,
                     indication = null,
-                    onClick = onClick,
+                    onClick = longPress.click(onClick),
                     onLongClick = onLongClick,
                 ),
         ) {
@@ -159,13 +162,15 @@ fun ChannelCard(
     onLongClick: (() -> Unit)? = null,
 ) {
     val interaction = rememberInteractionSource()
+    val longPress = rememberDpadLongPressState()
     Column(
         modifier = modifier
             .width(width)
             .focusGlow(interaction, CardShape, focusedScale = 1.05f, glowColor = Palette.ElectricBlue)
             .clip(CardShape)
             .background(Palette.SurfaceElevated)
-            .combinedClickable(interactionSource = interaction, indication = null, onClick = onClick, onLongClick = onLongClick)
+            .dpadLongPress(longPress, onLongClick)
+            .combinedClickable(interactionSource = interaction, indication = null, onClick = longPress.click(onClick), onLongClick = onLongClick)
             .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -221,6 +226,7 @@ fun MediaRow(
     cardWidth: Dp = 150.dp,
     aspect: Float = PosterAspect,
     lockedCategoryIds: Set<String> = emptySet(),
+    showFavoriteState: Boolean = false,
     onClick: (MediaItem) -> Unit,
     onLongClick: ((MediaItem) -> Unit)? = null,
 ) {
@@ -237,8 +243,10 @@ fun MediaRow(
                         imageUrl = item.imageUrl,
                         subtitle = item.subtitle,
                         progress = item.progress,
+                        isFavorite = item.isFavorite,
                         width = cardWidth,
                         aspect = aspect,
+                        modifier = if (showFavoriteState && !item.isFavorite) Modifier.alpha(0.45f) else Modifier,
                         onClick = { onClick(item) },
                         onLongClick = onLongClick?.let { cb -> { cb(item) } },
                     )
@@ -292,7 +300,7 @@ fun Pill(
         Text(
             text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (focused) Color.White else if (selected) Palette.OnSurface else Palette.Muted,
+            color = if (focused || selected) Color.White else Palette.OnSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

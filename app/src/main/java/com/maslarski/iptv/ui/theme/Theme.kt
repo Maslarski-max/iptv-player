@@ -1,9 +1,11 @@
 package com.maslarski.iptv.ui.theme
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -16,8 +18,8 @@ object Palette {
     val SurfaceElevated = Color(0xFF1C1C27)
     val SurfaceHighest = Color(0xFF262633)
     val Slate = Color(0xFF334155)
-    val OnSurface = Color(0xFFF1F1F6)
-    val Muted = Color(0xFF9CA3AF)
+    val OnSurface = Color(0xFFF5F5FA)
+    val Muted = Color(0xFFC3C7D3)
     val NeonPurple = Color(0xFFA855F7)
     val ElectricBlue = Color(0xFF38BDF8)
     val Gold = Color(0xFFFBBF24)
@@ -28,6 +30,7 @@ object Palette {
     val FocusGradient = Brush.linearGradient(listOf(NeonPurple, ElectricBlue))
     val HeroScrim = Brush.verticalGradient(listOf(Color.Transparent, Background.copy(alpha = 0.85f), Background))
     val HeroSideScrim = Brush.horizontalGradient(listOf(Background, Background.copy(alpha = 0.7f), Color.Transparent))
+    val HeroTopScrim = Brush.verticalGradient(listOf(Background.copy(alpha = 0.9f), Background.copy(alpha = 0.5f), Color.Transparent))
 }
 
 private val DarkScheme = darkColorScheme(
@@ -72,5 +75,7 @@ private val AppTypography = Typography(
 
 @Composable
 fun IptvTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = DarkScheme, typography = AppTypography, content = content)
+    MaterialTheme(colorScheme = DarkScheme, typography = AppTypography) {
+        CompositionLocalProvider(LocalContentColor provides DarkScheme.onBackground, content = content)
+    }
 }

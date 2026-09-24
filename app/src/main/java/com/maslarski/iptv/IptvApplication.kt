@@ -11,8 +11,16 @@ import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import com.maslarski.iptv.data.sync.RemotePlaylistProvisioner
 import com.maslarski.iptv.data.sync.SyncScheduler
+import com.maslarski.iptv.domain.license.LicenseRepository
+import com.maslarski.iptv.domain.reminder.ReminderManager
 import dagger.hilt.android.HiltAndroidApp
+import io.sentry.android.core.SentryAndroid
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 
@@ -22,13 +30,34 @@ class IptvApplication : Application(), Configuration.Provider, SingletonImageLoa
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var okHttpClient: OkHttpClient
     @Inject lateinit var syncScheduler: SyncScheduler
+    @Inject lateinit var reminders: ReminderManager
+    @Inject lateinit var license: LicenseRepository
+    @Inject lateinit var remotePlaylists: RemotePlaylistProvisioner
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
     override fun onCreate() {
         super.onCreate()
-        syncScheduler.scheduleOnLaunch()
+        SentryAndroid.init(this) { options ->
+            options.dsn = BuildConfig.SENTRY_DSN
+            options.environment = if (BuildConfig.DEBUG) "debug" else "production"
+            options.release = "${BuildConfig.APPLICATION_ID}@${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}"
+            options.isEnableAutoSessionTracking = true
+            options.tracesSampleRate = if (BuildConfig.DEBUG) 1.0 else 0.2
+            options.isEnableAutoActivityLifecycleTracing = true
+            options.isEnableAppStartProfiling = false
+            options.isAttachScreenshot = false
+        }
+        appScope.launch {
+            license.ensureTrialStarted()
+            license.syncRemote()
+            syncScheduler.scheduleOnLaunch()
+        }
+        remotePlaylists.start(appScope)
+        reminders.rescheduleAll()
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)

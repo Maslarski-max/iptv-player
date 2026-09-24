@@ -14,7 +14,9 @@ import com.maslarski.iptv.data.local.entity.EpisodeEntity
 import com.maslarski.iptv.data.local.entity.FavoriteEntity
 import com.maslarski.iptv.data.local.entity.MovieEntity
 import com.maslarski.iptv.data.local.entity.PlaylistEntity
+import com.maslarski.iptv.data.local.entity.ReminderEntity
 import com.maslarski.iptv.data.local.entity.SeriesEntity
+import com.maslarski.iptv.data.local.entity.TmdbMetadataEntity
 import com.maslarski.iptv.data.local.entity.WatchProgressEntity
 import com.maslarski.iptv.domain.model.ContentType
 import kotlinx.coroutines.flow.Flow
@@ -146,6 +148,16 @@ interface MovieDao {
     @Query("SELECT COUNT(*) FROM movies WHERE playlistId = :playlistId")
     suspend fun count(playlistId: Long): Int
 
+    @Query(
+        """
+        SELECT * FROM movies WHERE playlistId = :playlistId
+          AND ((posterUrl IS NULL OR posterUrl = '') OR (synopsis IS NULL OR synopsis = ''))
+          AND (tmdbCheckedAt IS NULL OR tmdbCheckedAt < :checkedBefore)
+        ORDER BY addedAt DESC LIMIT :limit
+        """,
+    )
+    suspend fun needingEnrichment(playlistId: Long, checkedBefore: Long, limit: Int): List<MovieEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(movies: List<MovieEntity>)
 
@@ -184,6 +196,16 @@ interface SeriesDao {
 
     @Query("SELECT COUNT(*) FROM series WHERE playlistId = :playlistId")
     suspend fun count(playlistId: Long): Int
+
+    @Query(
+        """
+        SELECT * FROM series WHERE playlistId = :playlistId
+          AND ((posterUrl IS NULL OR posterUrl = '') OR (synopsis IS NULL OR synopsis = ''))
+          AND (tmdbCheckedAt IS NULL OR tmdbCheckedAt < :checkedBefore)
+        ORDER BY rowid DESC LIMIT :limit
+        """,
+    )
+    suspend fun needingEnrichment(playlistId: Long, checkedBefore: Long, limit: Int): List<SeriesEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(series: List<SeriesEntity>)
@@ -271,6 +293,33 @@ interface FavoriteDao {
 }
 
 @Dao
+interface ReminderDao {
+    @Query("SELECT * FROM reminders WHERE endMillis > :now ORDER BY startMillis")
+    fun observeUpcoming(now: Long): Flow<List<ReminderEntity>>
+
+    @Query("SELECT * FROM reminders WHERE endMillis > :now ORDER BY startMillis")
+    suspend fun upcoming(now: Long): List<ReminderEntity>
+
+    @Query("SELECT * FROM reminders WHERE id = :id")
+    suspend fun getById(id: Long): ReminderEntity?
+
+    @Query("SELECT * FROM reminders WHERE epgChannelId = :epgChannelId AND startMillis = :startMillis LIMIT 1")
+    suspend fun find(epgChannelId: String, startMillis: Long): ReminderEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(reminder: ReminderEntity): Long
+
+    @Query("DELETE FROM reminders WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("DELETE FROM reminders WHERE endMillis <= :now")
+    suspend fun deleteExpired(now: Long)
+
+    @Query("DELETE FROM reminders WHERE playlistId = :playlistId")
+    suspend fun deleteFor(playlistId: Long)
+}
+
+@Dao
 interface WatchProgressDao {
     @Query("SELECT * FROM watch_progress WHERE playlistId = :playlistId AND contentType != 'LIVE' AND durationMillis > 0 AND positionMillis * 1.0 / durationMillis < 0.95 ORDER BY updatedAt DESC LIMIT :limit")
     fun observeContinueWatching(playlistId: Long, limit: Int): Flow<List<WatchProgressEntity>>
@@ -291,5 +340,55 @@ interface WatchProgressDao {
     suspend fun delete(playlistId: Long, contentId: String, type: ContentType)
 
     @Query("DELETE FROM watch_progress WHERE playlistId = :playlistId")
+    suspend fun deleteFor(playlistId: Long)
+}
+
+@Dao
+interface TmdbMetadataDao {
+    @Query("SELECT * FROM tmdb_metadata WHERE playlistId = :playlistId AND contentId = :contentId AND type = :type")
+    suspend fun get(playlistId: Long, contentId: String, type: ContentType): TmdbMetadataEntity?
+
+    @Upsert
+    suspend fun upsert(entity: TmdbMetadataEntity)
+
+    @Query(
+        """
+        UPDATE movies SET
+            posterUrl = COALESCE(NULLIF(posterUrl, ''), (SELECT t.posterUrl FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')),
+            backdropUrl = COALESCE(NULLIF(backdropUrl, ''), (SELECT t.backdropUrl FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')),
+            synopsis = COALESCE(NULLIF(synopsis, ''), (SELECT t.synopsis FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')),
+            releaseYear = COALESCE(NULLIF(releaseYear, ''), (SELECT t.releaseYear FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')),
+            rating = COALESCE(rating, (SELECT t.rating FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')),
+            `cast` = COALESCE(NULLIF(`cast`, ''), (SELECT t.`cast` FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')),
+            director = COALESCE(NULLIF(director, ''), (SELECT t.director FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')),
+            genre = COALESCE(NULLIF(genre, ''), (SELECT t.genre FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')),
+            durationSeconds = COALESCE(durationSeconds, (SELECT t.durationSeconds FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')),
+            tmdbId = (SELECT t.tmdbId FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE'),
+            tmdbCheckedAt = (SELECT t.checkedAt FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')
+        WHERE playlistId = :playlistId
+          AND EXISTS (SELECT 1 FROM tmdb_metadata t WHERE t.playlistId = movies.playlistId AND t.contentId = movies.id AND t.type = 'MOVIE')
+        """,
+    )
+    suspend fun applyToMovies(playlistId: Long)
+
+    @Query(
+        """
+        UPDATE series SET
+            posterUrl = COALESCE(NULLIF(posterUrl, ''), (SELECT t.posterUrl FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES')),
+            backdropUrl = COALESCE(NULLIF(backdropUrl, ''), (SELECT t.backdropUrl FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES')),
+            synopsis = COALESCE(NULLIF(synopsis, ''), (SELECT t.synopsis FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES')),
+            releaseYear = COALESCE(NULLIF(releaseYear, ''), (SELECT t.releaseYear FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES')),
+            rating = COALESCE(rating, (SELECT t.rating FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES')),
+            `cast` = COALESCE(NULLIF(`cast`, ''), (SELECT t.`cast` FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES')),
+            genre = COALESCE(NULLIF(genre, ''), (SELECT t.genre FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES')),
+            tmdbId = (SELECT t.tmdbId FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES'),
+            tmdbCheckedAt = (SELECT t.checkedAt FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES')
+        WHERE playlistId = :playlistId
+          AND EXISTS (SELECT 1 FROM tmdb_metadata t WHERE t.playlistId = series.playlistId AND t.contentId = series.id AND t.type = 'SERIES')
+        """,
+    )
+    suspend fun applyToSeries(playlistId: Long)
+
+    @Query("DELETE FROM tmdb_metadata WHERE playlistId = :playlistId")
     suspend fun deleteFor(playlistId: Long)
 }

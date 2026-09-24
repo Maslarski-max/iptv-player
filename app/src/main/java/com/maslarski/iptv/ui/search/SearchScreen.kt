@@ -36,6 +36,7 @@ import com.maslarski.iptv.data.repository.PlaylistRepository
 import com.maslarski.iptv.domain.model.MediaItem
 import com.maslarski.iptv.domain.parental.ParentalGate
 import com.maslarski.iptv.ui.components.EmptyState
+import com.maslarski.iptv.ui.components.dpadTextField
 import com.maslarski.iptv.ui.components.LandscapeAspect
 import com.maslarski.iptv.ui.components.MediaRow
 import com.maslarski.iptv.ui.theme.Palette
@@ -113,7 +114,7 @@ fun SearchScreen(
         OutlinedTextField(
             value = query,
             onValueChange = viewModel::onQueryChange,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 24.dp).focusRequester(focus),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 24.dp).focusRequester(focus).dpadTextField(),
             placeholder = { Text(stringResource(R.string.search_hint), color = Palette.Muted) },
             leadingIcon = { Icon(Icons.Filled.Search, null, tint = Palette.NeonPurple) },
             singleLine = true,
@@ -128,7 +129,7 @@ fun SearchScreen(
         )
         when {
             query.trim().length < 2 -> EmptyState(stringResource(R.string.search_title), body = stringResource(R.string.search_hint), icon = Icons.Filled.Search)
-            state.isEmpty && !state.searching -> EmptyState(stringResource(R.string.search_no_results))
+            state.isEmpty && !state.searching -> EmptyState(stringResource(R.string.search_no_results, state.query))
             else -> LazyColumn(contentPadding = PaddingValues(bottom = 48.dp)) {
                 item { MediaRow(stringResource(R.string.nav_live), state.channels, aspect = LandscapeAspect, cardWidth = 200.dp, onClick = onPlay) }
                 item { MediaRow(stringResource(R.string.nav_movies), state.movies, onClick = onOpenDetails) }

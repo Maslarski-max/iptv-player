@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">IPTV Player</string>
+    <string name="app_name">MaxTV Player</string>
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
@@ -19,7 +19,7 @@
     <string name="home_recent_movies">Recently Added Movies</string>
     <string name="home_recent_series">Recently Added Series</string>
     <string name="home_live_now">Live Now</string>
-    <string name="home_empty_title">Welcome to IPTV Player</string>
+    <string name="home_empty_title">Welcome to MaxTV Player</string>
     <string name="home_empty_body">Add an M3U or Xtream Codes playlist to start watching.</string>
     <string name="action_add_playlist">Add playlist</string>
     <string name="action_play">Play</string>
@@ -166,4 +166,129 @@
     <string name="cd_poster">Poster</string>
     <string name="cd_logo">Channel logo</string>
     <string name="progress_percent">%1$d%%</string>
+
+    <string name="action_add_favorite">Add to favorites</string>
+    <string name="action_remove_favorite">Remove from favorites</string>
+    <string name="action_edit">Edit</string>
+    <string name="aspect_fit">Fit</string>
+    <string name="aspect_16_9">16:9</string>
+    <string name="aspect_4_3">4:3</string>
+    <string name="aspect_zoom">Zoom</string>
+    <string name="aspect_stretch">Stretch</string>
+    <string name="favorites_empty_title">No favorites yet</string>
+    <string name="favorites_empty_body">Long-press any channel, movie or series to add it here.</string>
+    <string name="label_cast">Cast</string>
+    <string name="label_director">Director</string>
+    <string name="label_synopsis">Synopsis</string>
+    <string name="live_badge">LIVE</string>
+    <string name="pin_set">Set PIN</string>
+    <string name="pin_set_hint">Choose a 4-digit PIN to lock categories</string>
+    <string name="pin_change">Change PIN</string>
+    <string name="pin_remove">Remove PIN</string>
+    <string name="pin_lock_now">Lock now</string>
+    <string name="player_audio">Audio</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_rewind">Rewind 10s</string>
+    <string name="player_forward">Forward 30s</string>
+    <string name="player_channel_up">Next channel</string>
+    <string name="player_next">Next: %1$s</string>
+    <string name="player_no_tracks">No tracks available</string>
+    <string name="player_load_subtitle">Load subtitle file (.srt/.vtt)</string>
+    <string name="playlist_counts">%1$d channels · %2$d movies · %3$d series</string>
+    <string name="playlists_manage">Add, edit or switch playlists</string>
+    <string name="search_title">Search</string>
+    <string name="series_season">Season %1$d</string>
+    <string name="series_seasons_count">%1$d seasons</string>
+    <string name="series_episode_label">%1$d. %2$s</string>
+    <string name="settings_playback">Playback</string>
+    <string name="settings_playlists">Playlists</string>
+    <string name="settings_hw_accel">Hardware acceleration</string>
+    <string name="settings_hw_accel_body">Use hardware video decoders when available</string>
+    <string name="settings_auto_update_body">Refresh playlists and EPG when the app starts</string>
+    <string name="settings_locked_categories">Locked categories</string>
+    <string name="settings_metadata">Artwork &amp; metadata (TMDB)</string>
+    <string name="settings_tmdb_key">TMDB API key</string>
+    <string name="settings_tmdb_body">Enter a free TMDB API key to automatically fetch missing posters, backdrops and synopses for movies and series.</string>
+    <string name="settings_tmdb_body_builtin">A TMDB key is built into this app. Enter your own key below to override it.</string>
+
+    <!-- Account / subscription -->
+    <string name="settings_account">Account details</string>
+    <string name="account_status">Subscription status</string>
+    <string name="account_status_active">Active</string>
+    <string name="account_status_trial">Free trial</string>
+    <string name="account_status_expired">Expired</string>
+    <string name="account_days_left">Remaining time</string>
+    <plurals name="account_days_left_value">
+        <item quantity="one">%d day left</item>
+        <item quantity="other">%d days left</item>
+    </plurals>
+    <string name="account_expired_on">Expired</string>
+    <string name="account_expiry">Expiry date</string>
+    <string name="account_lifetime">Lifetime licence – never expires</string>
+    <string name="account_device_id">Device ID</string>
+    <string name="account_activate">Activate premium</string>
+    <string name="account_manage">Licence details</string>
+    <string name="account_details_open">Account details</string>
+    <string name="action_done">Done</string>
+    <string name="account_verification">Verification</string>
+    <string name="account_verified_server">Verified by server</string>
+    <string name="account_verified_local">Local only (offline)</string>
+
+    <!-- Activation screen -->
+    <string name="activation_title">Unlock MaxTV Player Premium</string>
+    <string name="activation_expired_body">Your 7-day free trial has ended. Choose a package and enter your activation key to keep watching.</string>
+    <string name="activation_trial_body">Your free trial is active – %1$d days left. Activate now to keep everything unlocked.</string>
+    <string name="activation_active_body">Your subscription is active until %1$s.</string>
+    <string name="activation_how_title">How to activate</string>
+    <string name="activation_how_body">Send the Device ID shown below to your provider to receive an activation key, or enter a key you already have. Activation works without an internet connection.</string>
+    <string name="activation_key">Activation key</string>
+    <string name="activation_activate">Activate</string>
+    <string name="activation_invalid">This key is not valid for this device.</string>
+    <string name="activation_success">Activated: %1$s</string>
+    <string name="plan_lifetime">Lifetime</string>
+    <string name="plan_monthly">1 month</string>
+    <string name="plan_quarterly">3 months</string>
+    <string name="plan_half_year">6 months</string>
+    <string name="plan_yearly">12 months</string>
+    <string name="plan_months">%1$d months of access</string>
+    <string name="plan_once">One-time payment</string>
+    <string name="plan_best_value">Best value</string>
+    <string name="plan_trial_title">%1$d-day free trial</string>
+    <string name="plan_trial_over">Trial ended</string>
+    <string name="plan_free">Free</string>
+    <string name="plan_lifetime_title">Lifetime access</string>
+    <string name="plan_buy_google_play">Buy with Google Play</string>
+    <string name="plan_owned">Purchased – thank you!</string>
+    <string name="plan_store_unavailable">Google Play is not available on this device. Use an activation key below.</string>
+
+    <!-- Favorites -->
+    <string name="favorites_hint">Long-press a card to remove it from favorites. Press OK on a dimmed card to add it back.</string>
+
+    <!-- Player overlays -->
+    <string name="player_channel_list">Channels</string>
+    <string name="player_settings">Player settings</string>
+
+    <!-- Playlists / refresh -->
+    <string name="playlist_delete_title">Delete “%1$s”?</string>
+    <string name="playlist_delete_body">All cached channels, movies, series, EPG data and favorites for this playlist will be removed.</string>
+    <string name="settings_refresh_mode">Playlist refresh</string>
+    <string name="settings_refresh_mode_body">Choose when playlists and EPG data are refreshed. Background refresh keeps running when the app is closed.</string>
+    <string name="settings_refresh_now">Refresh now</string>
+    <string name="refresh_manual">Manual</string>
+    <string name="refresh_on_launch">On app launch</string>
+    <string name="refresh_every_12h">Every 12 hours</string>
+    <string name="refresh_every_24h">Every 24 hours</string>
+    <string name="settings_launch_last">Launch last watched channel on startup</string>
+    <string name="settings_launch_last_body">Open the last live channel immediately when the app starts</string>
+
+    <!-- Reminders -->
+    <string name="reminder_remind_me">Remind me</string>
+    <string name="reminder_auto_switch">Auto-switch channel</string>
+    <string name="reminder_remove">Remove reminder</string>
+    <string name="reminder_set">Reminder set</string>
+    <string name="reminder_auto_switch_set">Auto-switch set</string>
+    <string name="reminder_switched">Switched to</string>
+    <string name="reminder_channel_name">Program reminders</string>
+    <string name="reminder_starting_now">Starting now: %1$s</string>
 </resources>
