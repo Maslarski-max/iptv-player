@@ -287,7 +287,7 @@ class ContentRepository @Inject constructor(
     }
 
     fun continueWatching(playlistId: Long, limit: Int = 20): Flow<List<MediaItem>> =
-        db.watchProgressDao().observeContinueWatching(playlistId, limit).flatMapLatest { progress ->
+        db.watchProgressDao().observeContinueWatching(playlistId, limit * 10).flatMapLatest { progress ->
             if (progress.isEmpty()) return@flatMapLatest flowOf(emptyList())
             val movieIds = progress.filter { it.contentType == ContentType.MOVIE }.map { it.contentId }
             val episodeIds = progress.filter { it.contentType == ContentType.SERIES }.map { it.contentId }
@@ -307,7 +307,7 @@ class ContentRepository @Inject constructor(
                     e.toDomain(progress = byKey[ContentType.SERIES to e.id]?.toDomain())
                         .toMediaItem(parent?.title, parent?.posterUrl)
                 }
-                (movieItems + episodeItems).sortedByDescending { byKey[it.type to it.id]?.updatedAt ?: 0L }
+                (movieItems + episodeItems).sortedByDescending { byKey[it.type to it.id]?.updatedAt ?: 0L }.take(limit)
             }
         }
 
