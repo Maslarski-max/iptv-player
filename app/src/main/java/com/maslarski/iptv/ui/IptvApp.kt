@@ -86,6 +86,7 @@ import com.maslarski.iptv.ui.player.PlayerScreen
 import com.maslarski.iptv.ui.playlists.EditPlaylistScreen
 import com.maslarski.iptv.ui.playlists.PlaylistsScreen
 import com.maslarski.iptv.ui.search.SearchScreen
+import com.maslarski.iptv.ui.settings.ManageCategoriesScreen
 import com.maslarski.iptv.ui.settings.SettingsScreen
 import com.maslarski.iptv.ui.theme.Palette
 
@@ -122,7 +123,8 @@ fun IptvApp() {
     // Settings, playlist management and the activation screen stay reachable after the trial ends.
     val gateExempt = destination == null ||
         destination.hasRoute<Route.Settings>() || destination.hasRoute<Route.Activation>() ||
-        destination.hasRoute<Route.Playlists>() || destination.hasRoute<Route.EditPlaylist>()
+        destination.hasRoute<Route.Playlists>() || destination.hasRoute<Route.EditPlaylist>() ||
+        destination.hasRoute<Route.ManageCategories>()
     val locked = license?.isUnlocked == false && !gateExempt
 
     LaunchedEffect(Unit) { app.tickReminders() }
@@ -244,9 +246,11 @@ private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
                 onAddPlaylist = { nav.navigate(Route.EditPlaylist()) },
                 onEditPlaylist = { nav.navigate(Route.EditPlaylist(it)) },
                 onActivate = { nav.navigate(Route.Activation) },
+                onManageCategories = { nav.navigate(Route.ManageCategories) },
             )
         }
         composable<Route.Activation> { ActivationScreen(onDone = { nav.popBackStack() }) }
+        composable<Route.ManageCategories> { ManageCategoriesScreen() }
         composable<Route.Playlists> {
             PlaylistsScreen(onAdd = { nav.navigate(Route.EditPlaylist()) }, onEdit = { nav.navigate(Route.EditPlaylist(it)) })
         }

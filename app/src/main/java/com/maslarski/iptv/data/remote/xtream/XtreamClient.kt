@@ -97,13 +97,14 @@ class XtreamClient @Inject constructor(private val api: XtreamApi) {
             ContentType.MOVIE -> XtreamActions.VOD_CATEGORIES
             ContentType.SERIES -> XtreamActions.SERIES_CATEGORIES
         }
-        api.call(playlist.apiUrl(), playlist.user(), playlist.pass(), action).asArrayOrEmpty().mapNotNull { item ->
-            val id = item.str("category_id") ?: return@mapNotNull null
+        api.call(playlist.apiUrl(), playlist.user(), playlist.pass(), action).asArrayOrEmpty().mapIndexedNotNull { index, item ->
+            val id = item.str("category_id") ?: return@mapIndexedNotNull null
             CategoryEntity(
                 id = id,
                 playlistId = playlist.id,
                 name = item.str("category_name") ?: "Category $id",
                 type = type,
+                customOrder = index,
             )
         }
     }

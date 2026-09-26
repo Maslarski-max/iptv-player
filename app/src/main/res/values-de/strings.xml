@@ -250,4 +250,13 @@
         <item quantity="one">Noch %d Tag</item>
         <item quantity="other">Noch %d Tage</item>
     </plurals>
+    <string name="manage_categories_title">Kategorien &amp; Sender verwalten</string>
+    <string name="manage_categories_body">Kategorien und Live-Sender neu anordnen oder ausblenden</string>
+    <string name="manage_hint">OK: Verschiebemodus (Hoch/Runter zum Sortieren, OK oder Zurück zum Speichern) · OK gedrückt halten oder Menü: aus-/einblenden · Rechts: Sender anzeigen</string>
+    <string name="manage_moving">Verschieben</string>
+    <string name="manage_hidden">Ausgeblendet</string>
+    <string name="manage_hide">Ausblenden</string>
+    <string name="manage_show">Einblenden</string>
+    <string name="manage_items">%1$d Einträge</string>
+    <string name="manage_no_playlist">Fügen Sie zuerst eine Playlist hinzu, um ihre Kategorien zu verwalten.</string>
 </resources>

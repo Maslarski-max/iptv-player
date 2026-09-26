@@ -58,10 +58,12 @@ class PlaylistSyncer @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 _status.value = SyncStatus(isSyncing = true, playlistId = playlist.id, message = "Downloading playlist", progress = null)
+                val customization = snapshotCustomization(playlist.id)
                 when (playlist.type) {
                     PlaylistType.M3U -> syncM3u(playlist)
                     PlaylistType.XTREAM -> syncXtream(playlist)
                 }
+                restoreCustomization(playlist.id, customization)
                 enricher.reapplyCached(playlist.id)
                 if (includeEpg) syncEpg(playlist)
                 db.playlistDao().updateSyncStats(
@@ -76,6 +78,20 @@ class PlaylistSyncer @Inject constructor(
             }.onFailure { e ->
                 _status.value = SyncStatus(isSyncing = false, error = e.message ?: e::class.simpleName)
             }
+        }
+    }
+
+    private class Customization(val categories: List<CategoryEntity>, val channels: List<ChannelEntity>)
+
+    /** User ordering / visibility survives the delete-and-reinsert done by a full sync. */
+    private suspend fun snapshotCustomization(playlistId: Long) =
+        Customization(db.categoryDao().getAll(playlistId), db.channelDao().getCustomized(playlistId))
+
+    private suspend fun restoreCustomization(playlistId: Long, saved: Customization) {
+        if (saved.categories.isEmpty() && saved.channels.isEmpty()) return
+        db.withTransaction {
+            saved.categories.forEach { db.categoryDao().restoreCustomization(it.id, playlistId, it.type, it.customOrder, it.isVisible) }
+            saved.channels.forEach { db.channelDao().restoreCustomization(it.id, playlistId, it.customOrder, it.isVisible) }
         }
     }
 
@@ -107,7 +123,7 @@ class PlaylistSyncer @Inject constructor(
                         val group = entry.group ?: "Uncategorized"
                         val categoryId = categoryIdFor(group)
                         categories.getOrPut(type to categoryId) {
-                            CategoryEntity(id = categoryId, playlistId = playlist.id, name = group, type = type)
+                            CategoryEntity(id = categoryId, playlistId = playlist.id, name = group, type = type, customOrder = categories.size)
                         }
                         when (type) {
                             ContentType.LIVE -> channels += entry.toChannel(playlist.id, categoryId, order++)

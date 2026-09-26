@@ -291,4 +291,13 @@
     <string name="reminder_switched">Switched to</string>
     <string name="reminder_channel_name">Program reminders</string>
     <string name="reminder_starting_now">Starting now: %1$s</string>
+    <string name="manage_categories_title">Manage Categories &amp; Channels</string>
+    <string name="manage_categories_body">Reorder or hide categories and live channels</string>
+    <string name="manage_hint">OK: move mode (Up/Down to reorder, OK or Back to save) · Hold OK or Menu: hide/show · Right: show channels</string>
+    <string name="manage_moving">Moving</string>
+    <string name="manage_hidden">Hidden</string>
+    <string name="manage_hide">Hide</string>
+    <string name="manage_show">Show</string>
+    <string name="manage_items">%1$d items</string>
+    <string name="manage_no_playlist">Add a playlist first to manage its categories.</string>
 </resources>

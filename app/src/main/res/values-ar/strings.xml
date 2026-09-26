@@ -254,4 +254,13 @@
         <item quantity="many">متبقٍ %d يومًا</item>
         <item quantity="other">متبقٍ %d يوم</item>
     </plurals>
+    <string name="manage_categories_title">إدارة الفئات والقنوات</string>
+    <string name="manage_categories_body">إعادة ترتيب أو إخفاء الفئات والقنوات المباشرة</string>
+    <string name="manage_hint">OK: وضع النقل (أعلى/أسفل لإعادة الترتيب، OK أو رجوع للحفظ) · اضغط مطولاً OK أو القائمة: إخفاء/إظهار · يمين: عرض القنوات</string>
+    <string name="manage_moving">جارٍ النقل</string>
+    <string name="manage_hidden">مخفي</string>
+    <string name="manage_hide">إخفاء</string>
+    <string name="manage_show">إظهار</string>
+    <string name="manage_items">%1$d عنصر</string>
+    <string name="manage_no_playlist">أضف قائمة تشغيل أولاً لإدارة فئاتها.</string>
 </resources>

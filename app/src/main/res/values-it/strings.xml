@@ -250,4 +250,13 @@
         <item quantity="one">%d giorno rimanente</item>
         <item quantity="other">%d giorni rimanenti</item>
     </plurals>
+    <string name="manage_categories_title">Gestisci categorie e canali</string>
+    <string name="manage_categories_body">Riordina o nascondi categorie e canali live</string>
+    <string name="manage_hint">OK: modalità spostamento (Su/Giù per riordinare, OK o Indietro per salvare) · Tieni premuto OK o Menu: nascondi/mostra · Destra: mostra canali</string>
+    <string name="manage_moving">Spostamento</string>
+    <string name="manage_hidden">Nascosto</string>
+    <string name="manage_hide">Nascondi</string>
+    <string name="manage_show">Mostra</string>
+    <string name="manage_items">%1$d elementi</string>
+    <string name="manage_no_playlist">Aggiungi prima una playlist per gestirne le categorie.</string>
 </resources>

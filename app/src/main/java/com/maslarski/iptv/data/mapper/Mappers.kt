@@ -34,12 +34,15 @@ fun Playlist.toEntity() = PlaylistEntity(
 )
 
 fun CategoryEntity.toDomain(itemCount: Int = 0) =
-    Category(id = id, playlistId = playlistId, name = name, type = type, isLocked = isLocked, itemCount = itemCount)
+    Category(
+        id = id, playlistId = playlistId, name = name, type = type, isLocked = isLocked, itemCount = itemCount,
+        customOrder = customOrder, isVisible = isVisible,
+    )
 
 fun ChannelEntity.toDomain(isFavorite: Boolean = false) = Channel(
     id = id, playlistId = playlistId, name = name, streamUrl = streamUrl, logoUrl = logoUrl,
     categoryId = categoryId, categoryName = categoryName, epgChannelId = epgChannelId,
-    channelNumber = channelNumber, isFavorite = isFavorite,
+    channelNumber = channelNumber, isFavorite = isFavorite, customOrder = customOrder, isVisible = isVisible,
 )
 
 fun MovieEntity.toDomain(isFavorite: Boolean = false, progress: WatchProgress? = null) = Movie(

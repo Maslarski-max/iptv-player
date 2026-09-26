@@ -22,4 +22,5 @@ sealed interface Route {
         val favoritesOnly: Boolean = false,
     ) : Route
     @Serializable data object Activation : Route
+    @Serializable data object ManageCategories : Route
 }

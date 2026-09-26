@@ -250,4 +250,13 @@
         <item quantity="one">%d jour restant</item>
         <item quantity="other">%d jours restants</item>
     </plurals>
+    <string name="manage_categories_title">Gérer les catégories et chaînes</string>
+    <string name="manage_categories_body">Réorganiser ou masquer les catégories et chaînes en direct</string>
+    <string name="manage_hint">OK : mode déplacement (Haut/Bas pour réorganiser, OK ou Retour pour enregistrer) · Maintenir OK ou Menu : masquer/afficher · Droite : voir les chaînes</string>
+    <string name="manage_moving">Déplacement</string>
+    <string name="manage_hidden">Masqué</string>
+    <string name="manage_hide">Masquer</string>
+    <string name="manage_show">Afficher</string>
+    <string name="manage_items">%1$d éléments</string>
+    <string name="manage_no_playlist">Ajoutez d\'abord une liste pour gérer ses catégories.</string>
 </resources>

@@ -250,4 +250,13 @@
         <item quantity="one">Преостанува уште %d ден</item>
         <item quantity="other">Преостануваат уште %d дена</item>
     </plurals>
+    <string name="manage_categories_title">Поставки за категории и канали</string>
+    <string name="manage_categories_body">Подредете или сокријте категории и канали во живо</string>
+    <string name="manage_hint">OK: режим за преместување (Горе/Долу за подредување, OK или Назад за зачувување) · Држете OK или Мени: сокриј/прикажи · Десно: прикажи канали</string>
+    <string name="manage_moving">Преместување</string>
+    <string name="manage_hidden">Сокриено</string>
+    <string name="manage_hide">Сокриј</string>
+    <string name="manage_show">Прикажи</string>
+    <string name="manage_items">%1$d ставки</string>
+    <string name="manage_no_playlist">Прво додадете плејлиста за да управувате со нејзините категории.</string>
 </resources>

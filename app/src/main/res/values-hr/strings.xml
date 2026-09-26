@@ -251,4 +251,13 @@
         <item quantity="few">Preostala su još %d dana</item>
         <item quantity="other">Preostalo je još %d dana</item>
     </plurals>
+    <string name="manage_categories_title">Upravljanje kategorijama i kanalima</string>
+    <string name="manage_categories_body">Promijenite redoslijed ili sakrijte kategorije i kanale uživo</string>
+    <string name="manage_hint">OK: način premještanja (Gore/Dolje za redoslijed, OK ili Natrag za spremanje) · Držite OK ili Izbornik: sakrij/prikaži · Desno: prikaži kanale</string>
+    <string name="manage_moving">Premještanje</string>
+    <string name="manage_hidden">Skriveno</string>
+    <string name="manage_hide">Sakrij</string>
+    <string name="manage_show">Prikaži</string>
+    <string name="manage_items">%1$d stavki</string>
+    <string name="manage_no_playlist">Prvo dodajte listu za upravljanje njezinim kategorijama.</string>
 </resources>
