@@ -92,7 +92,6 @@ sentry-android = { group = "io.sentry", name = "sentry-android", version.ref = "
 sentry-okhttp = { group = "io.sentry", name = "sentry-okhttp", version.ref = "sentry" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
-firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 play-billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }

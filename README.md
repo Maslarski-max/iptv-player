@@ -37,3 +37,7 @@ It is never committed; provide it in one of these ways:
 
 Every push to `main` and every pull request runs the **Android CI** workflow, which uploads
 `iptv-player-debug-apk` as a build artifact (Actions tab → workflow run → Artifacts).
+
+## Privacy
+
+See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the data the app processes (Firestore trial tracking, Sentry crash reports, TMDB lookups).
