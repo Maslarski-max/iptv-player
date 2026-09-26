@@ -162,7 +162,6 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.firestore)
-    implementation(libs.firebase.analytics)
     implementation(libs.sentry.android)
     implementation(libs.sentry.okhttp)
     implementation(libs.play.billing)
