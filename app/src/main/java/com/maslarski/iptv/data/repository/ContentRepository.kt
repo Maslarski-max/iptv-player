@@ -1,5 +1,6 @@
 package com.maslarski.iptv.data.repository
 
+import androidx.room.withTransaction
 import com.maslarski.iptv.data.local.IptvDatabase
 import com.maslarski.iptv.data.local.entity.FavoriteEntity
 import com.maslarski.iptv.data.local.entity.WatchProgressEntity
@@ -53,6 +54,56 @@ class ContentRepository @Inject constructor(
             cats.map { it.toDomain(byId[it.id] ?: 0) }.filter { it.itemCount > 0 }
         }
     }
+
+    /** All categories of a type, hidden ones included, for the management editor. */
+    fun editableCategories(playlistId: Long, type: ContentType): Flow<List<Category>> {
+        val counts = when (type) {
+            ContentType.LIVE -> db.channelDao().observeCategoryCounts(playlistId)
+            ContentType.MOVIE -> db.movieDao().observeCategoryCounts(playlistId)
+            ContentType.SERIES -> db.seriesDao().observeCategoryCounts(playlistId)
+        }
+        return combine(db.categoryDao().observeAllForEdit(playlistId, type), counts) { cats, cnts ->
+            val byId = cnts.associate { it.categoryId to it.count }
+            cats.map { it.toDomain(byId[it.id] ?: 0) }.filter { it.itemCount > 0 }
+        }
+    }
+
+    /** All live channels of a category, hidden ones included, for the management editor. */
+    fun editableChannels(playlistId: Long, categoryId: String): Flow<List<Channel>> =
+        combine(db.channelDao().observeByCategoryForEdit(playlistId, categoryId), favoriteIds(playlistId, ContentType.LIVE)) { list, favs ->
+            list.map { it.toDomain(it.id in favs) }
+        }
+
+    /** Persists [ordered] (the full list of one type) as the new category sequence. */
+    suspend fun saveCategoryOrder(ordered: List<Category>) = db.withTransaction {
+        ordered.forEachIndexed { index, c -> db.categoryDao().setOrder(c.id, c.playlistId, c.type, index) }
+    }
+
+    /**
+     * Persists [ordered] (the full channel list of one category) by redistributing the existing order
+     * keys of those channels, so the category's slot within the global "all channels" list is unchanged.
+     */
+    suspend fun saveChannelOrder(ordered: List<Channel>) {
+        if (ordered.isEmpty()) return
+        val playlistId = ordered.first().playlistId
+        val rows = ordered.mapNotNull { db.channelDao().getById(playlistId, it.id) }
+        if (rows.size != ordered.size) return
+        var keys = rows.map { it.customOrder }.sorted()
+        if (keys.toSet().size != keys.size) keys = rows.map { it.sortOrder }.sorted()
+        if (keys.toSet().size != keys.size) {
+            val base = rows.minOf { it.customOrder }
+            keys = rows.indices.map { base + it }
+        }
+        db.withTransaction {
+            ordered.forEachIndexed { index, c -> db.channelDao().setOrder(c.id, playlistId, keys[index]) }
+        }
+    }
+
+    suspend fun setCategoryVisible(category: Category, visible: Boolean) =
+        db.categoryDao().setVisible(category.id, category.playlistId, category.type, visible)
+
+    suspend fun setChannelVisible(channel: Channel, visible: Boolean) =
+        db.channelDao().setVisible(channel.id, channel.playlistId, visible)
 
     fun lockedCategoryIds(playlistId: Long): Flow<Set<String>> =
         db.categoryDao().observeLocked(playlistId).map { list -> list.map { it.id }.toSet() }
@@ -236,7 +287,7 @@ class ContentRepository @Inject constructor(
     }
 
     fun continueWatching(playlistId: Long, limit: Int = 20): Flow<List<MediaItem>> =
-        db.watchProgressDao().observeContinueWatching(playlistId, limit).flatMapLatest { progress ->
+        db.watchProgressDao().observeContinueWatching(playlistId, limit * 10).flatMapLatest { progress ->
             if (progress.isEmpty()) return@flatMapLatest flowOf(emptyList())
             val movieIds = progress.filter { it.contentType == ContentType.MOVIE }.map { it.contentId }
             val episodeIds = progress.filter { it.contentType == ContentType.SERIES }.map { it.contentId }
@@ -256,7 +307,7 @@ class ContentRepository @Inject constructor(
                     e.toDomain(progress = byKey[ContentType.SERIES to e.id]?.toDomain())
                         .toMediaItem(parent?.title, parent?.posterUrl)
                 }
-                (movieItems + episodeItems).sortedByDescending { byKey[it.type to it.id]?.updatedAt ?: 0L }
+                (movieItems + episodeItems).sortedByDescending { byKey[it.type to it.id]?.updatedAt ?: 0L }.take(limit)
             }
         }
 

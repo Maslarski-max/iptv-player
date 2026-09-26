@@ -1,5 +1,6 @@
 package com.maslarski.iptv.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -33,6 +34,8 @@ data class CategoryEntity(
     val name: String,
     val type: ContentType,
     val isLocked: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val customOrder: Int = 0,
+    @ColumnInfo(defaultValue = "1") val isVisible: Boolean = true,
 )
 
 @Entity(
@@ -51,6 +54,8 @@ data class ChannelEntity(
     val epgChannelId: String?,
     val channelNumber: Int?,
     val sortOrder: Int,
+    @ColumnInfo(defaultValue = "0") val customOrder: Int = sortOrder,
+    @ColumnInfo(defaultValue = "1") val isVisible: Boolean = true,
 )
 
 @Entity(

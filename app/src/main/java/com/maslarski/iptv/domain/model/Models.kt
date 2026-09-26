@@ -26,6 +26,8 @@ data class Category(
     val type: ContentType,
     val isLocked: Boolean = false,
     val itemCount: Int = 0,
+    val customOrder: Int = 0,
+    val isVisible: Boolean = true,
 )
 
 data class Channel(
@@ -39,6 +41,8 @@ data class Channel(
     val epgChannelId: String? = null,
     val channelNumber: Int? = null,
     val isFavorite: Boolean = false,
+    val customOrder: Int = 0,
+    val isVisible: Boolean = true,
 )
 
 data class Movie(

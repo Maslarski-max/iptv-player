@@ -250,4 +250,13 @@
         <item quantity="one">Queda %d día</item>
         <item quantity="other">Quedan %d días</item>
     </plurals>
+    <string name="manage_categories_title">Gestionar categorías y canales</string>
+    <string name="manage_categories_body">Reordena u oculta categorías y canales en vivo</string>
+    <string name="manage_hint">OK: modo mover (Arriba/Abajo para reordenar, OK o Atrás para guardar) · Mantén OK o Menú: ocultar/mostrar · Derecha: ver canales</string>
+    <string name="manage_moving">Moviendo</string>
+    <string name="manage_hidden">Oculto</string>
+    <string name="manage_hide">Ocultar</string>
+    <string name="manage_show">Mostrar</string>
+    <string name="manage_items">%1$d elementos</string>
+    <string name="manage_no_playlist">Añade una lista primero para gestionar sus categorías.</string>
 </resources>

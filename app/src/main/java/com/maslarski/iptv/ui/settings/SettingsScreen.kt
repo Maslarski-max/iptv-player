@@ -21,9 +21,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -38,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -179,6 +183,7 @@ fun SettingsScreen(
     onAddPlaylist: () -> Unit,
     onEditPlaylist: (Long) -> Unit,
     onActivate: () -> Unit,
+    onManageCategories: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -267,6 +272,17 @@ fun SettingsScreen(
                 }
             }
             Spacer(Modifier.height(12.dp))
+        }
+        if (state.playlists.isNotEmpty()) {
+            item {
+                ActionRow(
+                    title = stringResource(R.string.manage_categories_title),
+                    body = stringResource(R.string.manage_categories_body),
+                    icon = Icons.AutoMirrored.Filled.Sort,
+                    onClick = onManageCategories,
+                )
+                Spacer(Modifier.height(12.dp))
+            }
         }
         items(state.playlists, key = { "playlist:${it.id}" }) { p ->
             PlaylistRow(
@@ -410,6 +426,29 @@ private fun TmdbKeyField(saved: String, onSave: (String) -> Unit) {
         )
         Spacer(Modifier.height(8.dp))
         GlowButton(stringResource(R.string.action_save), { onSave(draft) }, primary = false)
+    }
+}
+
+@Composable
+private fun ActionRow(title: String, body: String, icon: ImageVector, onClick: () -> Unit) {
+    val interaction = rememberInteractionSource()
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            .focusGlow(interaction, shape, focusedScale = 1.0f, borderWidth = 2.dp, glowColor = Palette.ElectricBlue)
+            .clip(shape).background(Palette.Surface)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = Palette.ElectricBlue)
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(body, style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+        }
+        Spacer(Modifier.width(16.dp))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Palette.Muted)
     }
 }
 

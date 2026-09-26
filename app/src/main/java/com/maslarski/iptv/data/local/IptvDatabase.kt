@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.maslarski.iptv.data.local.dao.CategoryDao
 import com.maslarski.iptv.data.local.dao.ChannelDao
 import com.maslarski.iptv.data.local.dao.EpgDao
@@ -51,7 +53,7 @@ class Converters {
         TmdbMetadataEntity::class,
         ReminderEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
     autoMigrations = [AutoMigration(from = 2, to = 3)],
 )
@@ -71,5 +73,20 @@ abstract class IptvDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "iptv.db"
+
+        /** Adds custom ordering + visibility; existing rows keep their previous order (name / sortOrder). */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE categories ADD COLUMN customOrder INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE categories ADD COLUMN isVisible INTEGER NOT NULL DEFAULT 1")
+                db.execSQL(
+                    "UPDATE categories SET customOrder = (SELECT COUNT(*) FROM categories c2 " +
+                        "WHERE c2.playlistId = categories.playlistId AND c2.type = categories.type AND c2.name < categories.name)",
+                )
+                db.execSQL("ALTER TABLE channels ADD COLUMN customOrder INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE channels ADD COLUMN isVisible INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("UPDATE channels SET customOrder = sortOrder")
+            }
+        }
     }
 }

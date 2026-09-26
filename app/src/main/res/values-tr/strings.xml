@@ -250,4 +250,13 @@
         <item quantity="one">%d gün kaldı</item>
         <item quantity="other">%d gün kaldı</item>
     </plurals>
+    <string name="manage_categories_title">Kategorileri ve Kanalları Yönet</string>
+    <string name="manage_categories_body">Kategorileri ve canlı kanalları yeniden sırala veya gizle</string>
+    <string name="manage_hint">OK: taşıma modu (Sıralamak için Yukarı/Aşağı, kaydetmek için OK veya Geri) · OK basılı tut veya Menü: gizle/göster · Sağ: kanalları göster</string>
+    <string name="manage_moving">Taşınıyor</string>
+    <string name="manage_hidden">Gizli</string>
+    <string name="manage_hide">Gizle</string>
+    <string name="manage_show">Göster</string>
+    <string name="manage_items">%1$d öğe</string>
+    <string name="manage_no_playlist">Kategorilerini yönetmek için önce bir oynatma listesi ekleyin.</string>
 </resources>
