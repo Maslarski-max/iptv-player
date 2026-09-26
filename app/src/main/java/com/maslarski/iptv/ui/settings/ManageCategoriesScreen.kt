@@ -1,5 +1,6 @@
 package com.maslarski.iptv.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -205,6 +206,7 @@ fun ManageCategoriesScreen(viewModel: ManageCategoriesViewModel = hiltViewModel(
 
     val rows = remember(state.categories, state.expanded, state.channels) { buildRows(state) }
     val movingKey = state.movingCategory?.let { "cat:${it.type}:${it.id}" } ?: state.movingChannelId?.let { "ch:$it" }
+    BackHandler(enabled = movingKey != null) { viewModel.finishMoving() }
 
     // Keep focus glued to the item being moved as it changes position (and scrolls into view if needed).
     LaunchedEffect(rows, movingKey) {
