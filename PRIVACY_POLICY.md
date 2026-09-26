@@ -20,7 +20,7 @@ This policy explains what data the app processes, why, where it is stored, and t
 | Pseudonymous device identifier (derived from Android ID) | Free-trial and licence status tracking | Google Firebase Firestore (Google Cloud, EU/US regions) | While the device record exists; deletable on request |
 | Device model, app version, first-seen / last-seen timestamps, subscription status, plan, expiry | Licence validation and support | Firebase Firestore | Same as above |
 | Crash reports and performance traces (stack traces, device model, OS version, app version, anonymised session) | App stability and performance diagnostics | Sentry (Functional Software, Inc.), EU data centre (`ingest.de.sentry.io`) | 90 days (Sentry default) |
-| Playlist URLs, Xtream credentials, EPG URLs, favourites, watch progress, reminders, parental PIN (hashed), settings | Core app functionality | **Only on your device** (encrypted-at-rest Android storage) | Until you delete the playlist or uninstall |
+| Playlist URLs, Xtream credentials, EPG URLs, favourites, watch progress, reminders, parental PIN (hashed), settings | Core app functionality | **Only on your device** (app-private sandboxed storage; encrypted at rest only where your device's Android file-based encryption is enabled) | Until you delete the playlist or uninstall |
 | Movie / series titles you browse | Fetching artwork and synopses | The Movie Database (TMDB) API | Not stored by us; TMDB terms apply |
 | Purchase token (if you buy via Google Play) | Verifying the lifetime licence | Google Play Billing | Managed by Google Play |
 
@@ -146,8 +146,9 @@ on our instructions or under their published terms, and disclosed otherwise only
 
 ## 10. Security
 
-Data in transit to Firebase, Sentry, TMDB and Google Play is encrypted with TLS. Local data is stored in
-the app's private, sandboxed storage. Firestore access is limited by security rules to each device's own
+Data in transit to Firebase, Sentry, TMDB and Google Play is encrypted with TLS. Local data, including playlist
+credentials, is stored in the app's private sandboxed storage (Room/DataStore); it is not additionally
+encrypted by the app and is protected by Android's app sandbox and device-level storage encryption. Firestore access is limited by security rules to each device's own
 record. No system is perfectly secure; if we become aware of a breach affecting your data we will notify
 you as required by law.
 
