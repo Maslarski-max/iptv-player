@@ -71,6 +71,7 @@ import com.maslarski.iptv.ui.components.rememberInteractionSource
 import com.maslarski.iptv.ui.theme.Palette
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -105,8 +106,9 @@ class ManageCategoriesViewModel @Inject constructor(
 
     // While an item is being moved the list is edited in memory and each step is written to Room;
     // the in-memory copy keeps rapid key presses consistent until the database flow catches up.
-    private val categoryOverride = MutableStateFlow<List<Category>?>(null)
+    private val categoryOverride = MutableStateFlow<Pair<ContentType, List<Category>>?>(null)
     private val channelOverride = MutableStateFlow<List<Channel>?>(null)
+    private var saveJob: Job? = null
 
     private val dbCategories = playlists.activePlaylist.flatMapLatest { p ->
         if (p == null) flowOf(null)
@@ -125,10 +127,10 @@ class ManageCategoriesViewModel @Inject constructor(
     val state: StateFlow<ManageUiState> = combine(
         combine(dbCategories, categoryOverride, movingCategory) { cats, override, moving ->
             val map = cats ?: return@combine null to moving
-            if (override != null && moving != null) map + (moving.type to override) to moving else map to moving
+            (if (override != null) map + override else map) to moving
         },
         combine(dbChannels, channelOverride, movingChannel) { chans, override, moving ->
-            (if (override != null && moving != null) override else chans) to moving
+            (override ?: chans) to moving
         },
         expanded,
     ) { (cats, movingCat), (chans, movingChan), exp ->
@@ -153,7 +155,7 @@ class ManageCategoriesViewModel @Inject constructor(
     fun startMovingCategory(category: Category) {
         finishMoving()
         movingCategory.value = CategoryKey(category.type, category.id)
-        categoryOverride.value = state.value.categories[category.type]
+        categoryOverride.value = state.value.categories[category.type]?.let { category.type to it }
     }
 
     fun startMovingChannel(channel: Channel) {
@@ -165,24 +167,39 @@ class ManageCategoriesViewModel @Inject constructor(
     fun finishMoving() {
         movingCategory.value = null
         movingChannel.value = null
-        categoryOverride.value = null
-        channelOverride.value = null
+        val pending = saveJob
+        viewModelScope.launch {
+            pending?.join()
+            if (saveJob == pending && movingCategory.value == null && movingChannel.value == null) {
+                categoryOverride.value = null
+                channelOverride.value = null
+            }
+        }
+    }
+
+    // Saves run strictly in key-press order so the last press always wins.
+    private fun enqueueSave(block: suspend () -> Unit) {
+        val previous = saveJob
+        saveJob = viewModelScope.launch {
+            previous?.join()
+            block()
+        }
     }
 
     /** Moves the item currently in Move Mode by [delta] rows (-1 = up, +1 = down) and persists the result. */
     fun moveBy(delta: Int) {
         movingCategory.value?.let { key ->
-            val list = categoryOverride.value ?: return
+            val (type, list) = categoryOverride.value ?: return
             val moved = list.swapped({ it.id == key.id }, delta) ?: return
-            categoryOverride.value = moved
-            viewModelScope.launch { content.saveCategoryOrder(moved) }
+            categoryOverride.value = type to moved
+            enqueueSave { content.saveCategoryOrder(moved) }
             return
         }
         movingChannel.value?.let { id ->
             val list = channelOverride.value ?: return
             val moved = list.swapped({ it.id == id }, delta) ?: return
             channelOverride.value = moved
-            viewModelScope.launch { content.saveChannelOrder(moved) }
+            enqueueSave { content.saveChannelOrder(moved) }
         }
     }
 
@@ -265,7 +282,8 @@ fun ManageCategoriesScreen(viewModel: ManageCategoriesViewModel = hiltViewModel(
                     ManageItemRow(
                         title = ch.name,
                         subtitle = null,
-                        visible = ch.isVisible && row.categoryVisible,
+                        visible = ch.isVisible,
+                        parentHidden = !row.categoryVisible,
                         moving = moving,
                         anyMoving = movingKey != null,
                         logoUrl = ch.logoUrl,
@@ -325,7 +343,9 @@ private fun ManageItemRow(
     expanded: Boolean = false,
     logoUrl: String? = null,
     indent: androidx.compose.ui.unit.Dp = 0.dp,
+    parentHidden: Boolean = false,
 ) {
+    val effectivelyVisible = visible && !parentHidden
     val interaction = rememberInteractionSource()
     val focused by rememberFocusState(interaction)
     val longPress = rememberDpadLongPressState()
@@ -385,7 +405,7 @@ private fun ManageItemRow(
             }
             Spacer(Modifier.width(12.dp))
         }
-        Column(Modifier.weight(1f).alpha(if (visible) 1f else 0.45f)) {
+        Column(Modifier.weight(1f).alpha(if (effectivelyVisible) 1f else 0.45f)) {
             Text(
                 title, style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (moving) FontWeight.Bold else FontWeight.Medium, maxLines = 1,
@@ -396,7 +416,7 @@ private fun ManageItemRow(
         if (moving) {
             Badge(stringResource(R.string.manage_moving), color = Palette.NeonPurple, textColor = Color.White)
             Spacer(Modifier.width(12.dp))
-        } else if (!visible) {
+        } else if (!effectivelyVisible) {
             Badge(stringResource(R.string.manage_hidden), color = Palette.SurfaceHighest, textColor = Palette.Muted)
             Spacer(Modifier.width(12.dp))
         }

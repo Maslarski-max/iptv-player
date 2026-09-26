@@ -156,19 +156,19 @@ interface ChannelDao {
 
 @Dao
 interface MovieDao {
-    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND (categoryId IS NULL OR categoryId NOT IN (SELECT id FROM categories WHERE categories.playlistId = movies.playlistId AND categories.type = 'MOVIE' AND categories.isVisible = 0)) ORDER BY title")
+    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND $VISIBLE ORDER BY title")
     fun observeAll(playlistId: Long): Flow<List<MovieEntity>>
 
     @Query("SELECT categoryId, COUNT(*) AS count FROM movies WHERE playlistId = :playlistId GROUP BY categoryId")
     fun observeCategoryCounts(playlistId: Long): Flow<List<CategoryCount>>
 
-    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND categoryId = :categoryId ORDER BY title")
+    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND categoryId = :categoryId AND $VISIBLE ORDER BY title")
     fun observeByCategory(playlistId: Long, categoryId: String): Flow<List<MovieEntity>>
 
-    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND (categoryId IS NULL OR categoryId NOT IN (SELECT id FROM categories WHERE categories.playlistId = movies.playlistId AND categories.type = 'MOVIE' AND categories.isVisible = 0)) ORDER BY addedAt DESC LIMIT :limit")
+    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND $VISIBLE ORDER BY addedAt DESC LIMIT :limit")
     fun observeRecent(playlistId: Long, limit: Int): Flow<List<MovieEntity>>
 
-    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND rating IS NOT NULL AND (categoryId IS NULL OR categoryId NOT IN (SELECT id FROM categories WHERE categories.playlistId = movies.playlistId AND categories.type = 'MOVIE' AND categories.isVisible = 0)) ORDER BY rating DESC LIMIT :limit")
+    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND rating IS NOT NULL AND $VISIBLE ORDER BY rating DESC LIMIT :limit")
     fun observeTopRated(playlistId: Long, limit: Int): Flow<List<MovieEntity>>
 
     @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND id = :id")
@@ -177,10 +177,10 @@ interface MovieDao {
     @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND id = :id")
     fun observeById(playlistId: Long, id: String): Flow<MovieEntity?>
 
-    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND id IN (:ids)")
+    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND id IN (:ids) AND $VISIBLE")
     fun observeByIds(playlistId: Long, ids: List<String>): Flow<List<MovieEntity>>
 
-    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND title LIKE '%' || :query || '%' AND (categoryId IS NULL OR categoryId NOT IN (SELECT id FROM categories WHERE categories.playlistId = movies.playlistId AND categories.type = 'MOVIE' AND categories.isVisible = 0)) ORDER BY title LIMIT :limit")
+    @Query("SELECT * FROM movies WHERE playlistId = :playlistId AND title LIKE '%' || :query || '%' AND $VISIBLE ORDER BY title LIMIT :limit")
     suspend fun search(playlistId: Long, query: String, limit: Int): List<MovieEntity>
 
     @Query("SELECT COUNT(*) FROM movies WHERE playlistId = :playlistId")
@@ -201,20 +201,26 @@ interface MovieDao {
 
     @Query("DELETE FROM movies WHERE playlistId = :playlistId")
     suspend fun deleteFor(playlistId: Long)
+
+    companion object {
+        /** Item whose category (if any) is not hidden. */
+        const val VISIBLE = "(categoryId IS NULL OR categoryId NOT IN " +
+            "(SELECT id FROM categories WHERE categories.playlistId = movies.playlistId AND categories.type = 'MOVIE' AND categories.isVisible = 0))"
+    }
 }
 
 @Dao
 interface SeriesDao {
-    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND (categoryId IS NULL OR categoryId NOT IN (SELECT id FROM categories WHERE categories.playlistId = series.playlistId AND categories.type = 'SERIES' AND categories.isVisible = 0)) ORDER BY title")
+    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND $VISIBLE ORDER BY title")
     fun observeAll(playlistId: Long): Flow<List<SeriesEntity>>
 
     @Query("SELECT categoryId, COUNT(*) AS count FROM series WHERE playlistId = :playlistId GROUP BY categoryId")
     fun observeCategoryCounts(playlistId: Long): Flow<List<CategoryCount>>
 
-    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND (categoryId IS NULL OR categoryId NOT IN (SELECT id FROM categories WHERE categories.playlistId = series.playlistId AND categories.type = 'SERIES' AND categories.isVisible = 0)) ORDER BY rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND $VISIBLE ORDER BY rowid DESC LIMIT :limit")
     fun observeRecent(playlistId: Long, limit: Int): Flow<List<SeriesEntity>>
 
-    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND categoryId = :categoryId ORDER BY title")
+    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND categoryId = :categoryId AND $VISIBLE ORDER BY title")
     fun observeByCategory(playlistId: Long, categoryId: String): Flow<List<SeriesEntity>>
 
     @Query("SELECT * FROM series WHERE playlistId = :playlistId AND id = :id")
@@ -223,13 +229,13 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE playlistId = :playlistId AND id = :id")
     suspend fun getById(playlistId: Long, id: String): SeriesEntity?
 
-    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND id IN (:ids)")
+    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND id IN (:ids) AND $VISIBLE")
     fun observeByIds(playlistId: Long, ids: List<String>): Flow<List<SeriesEntity>>
 
-    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND rating IS NOT NULL AND (categoryId IS NULL OR categoryId NOT IN (SELECT id FROM categories WHERE categories.playlistId = series.playlistId AND categories.type = 'SERIES' AND categories.isVisible = 0)) ORDER BY rating DESC LIMIT :limit")
+    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND rating IS NOT NULL AND $VISIBLE ORDER BY rating DESC LIMIT :limit")
     fun observeTopRated(playlistId: Long, limit: Int): Flow<List<SeriesEntity>>
 
-    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND title LIKE '%' || :query || '%' AND (categoryId IS NULL OR categoryId NOT IN (SELECT id FROM categories WHERE categories.playlistId = series.playlistId AND categories.type = 'SERIES' AND categories.isVisible = 0)) ORDER BY title LIMIT :limit")
+    @Query("SELECT * FROM series WHERE playlistId = :playlistId AND title LIKE '%' || :query || '%' AND $VISIBLE ORDER BY title LIMIT :limit")
     suspend fun search(playlistId: Long, query: String, limit: Int): List<SeriesEntity>
 
     @Query("SELECT COUNT(*) FROM series WHERE playlistId = :playlistId")
@@ -253,6 +259,12 @@ interface SeriesDao {
 
     @Query("DELETE FROM series WHERE playlistId = :playlistId")
     suspend fun deleteFor(playlistId: Long)
+
+    companion object {
+        /** Item whose category (if any) is not hidden. */
+        const val VISIBLE = "(categoryId IS NULL OR categoryId NOT IN " +
+            "(SELECT id FROM categories WHERE categories.playlistId = series.playlistId AND categories.type = 'SERIES' AND categories.isVisible = 0))"
+    }
 }
 
 @Dao
@@ -263,7 +275,7 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE playlistId = :playlistId AND id = :id")
     suspend fun getById(playlistId: Long, id: String): EpisodeEntity?
 
-    @Query("SELECT * FROM episodes WHERE playlistId = :playlistId AND id IN (:ids)")
+    @Query("SELECT * FROM episodes WHERE playlistId = :playlistId AND id IN (:ids) AND seriesId IN (SELECT id FROM series WHERE series.playlistId = episodes.playlistId AND ${SeriesDao.VISIBLE})")
     fun observeByIds(playlistId: Long, ids: List<String>): Flow<List<EpisodeEntity>>
 
     @Query("SELECT * FROM episodes WHERE playlistId = :playlistId AND seriesId = :seriesId AND (seasonNumber > :season OR (seasonNumber = :season AND episodeNumber > :episode)) ORDER BY seasonNumber, episodeNumber LIMIT 1")

@@ -90,7 +90,10 @@ class ContentRepository @Inject constructor(
         if (rows.size != ordered.size) return
         var keys = rows.map { it.customOrder }.sorted()
         if (keys.toSet().size != keys.size) keys = rows.map { it.sortOrder }.sorted()
-        if (keys.toSet().size != keys.size) keys = rows.indices.toList()
+        if (keys.toSet().size != keys.size) {
+            val base = rows.minOf { it.customOrder }
+            keys = rows.indices.map { base + it }
+        }
         db.withTransaction {
             ordered.forEachIndexed { index, c -> db.channelDao().setOrder(c.id, playlistId, keys[index]) }
         }
