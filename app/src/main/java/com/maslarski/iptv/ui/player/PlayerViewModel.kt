@@ -71,6 +71,8 @@ data class PlayerUiState(
     val contentType: ContentType = ContentType.LIVE,
     val isLive: Boolean = false,
     val isPlaying: Boolean = false,
+    /** User intent (`playWhenReady`): false only after an explicit pause, never during stalls or rebuffering. */
+    val isPaused: Boolean = false,
     val isBuffering: Boolean = true,
     val positionMillis: Long = 0L,
     val durationMillis: Long = 0L,
@@ -154,7 +156,7 @@ class PlayerViewModel @Inject constructor(
                 )
                 .setLiveTargetOffsetMs(LIVE_TARGET_OFFSET_MS),
         )
-        .setHandleAudioBecomingNoisy(true)
+        .setHandleAudioBecomingNoisy(false)
         .setSeekBackIncrementMs(10_000)
         .setSeekForwardIncrementMs(30_000)
         .build()
@@ -230,6 +232,10 @@ class PlayerViewModel @Inject constructor(
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) { _state.update { it.copy(isPlaying = isPlaying) } }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            _state.update { it.copy(isPaused = !playWhenReady) }
+        }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             _state.update {

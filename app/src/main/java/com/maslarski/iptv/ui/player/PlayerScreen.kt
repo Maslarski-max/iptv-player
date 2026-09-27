@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -109,13 +110,15 @@ import java.util.Locale
 
 private enum class Panel { NONE, AUDIO, SUBTITLES, GUIDE, SETTINGS }
 
+private val DPAD_KEYS = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.DirectionCenter, Key.Enter)
+
 @UnstableApi
 @Composable
 fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val guide by viewModel.guide.collectAsStateWithLifecycle()
     var reminderSelection by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
-    var controlsVisible by remember { mutableStateOf(true) }
+    var controlsVisible by rememberSaveable { mutableStateOf(true) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var panel by remember { mutableStateOf(Panel.NONE) }
     val playFocus = remember { FocusRequester() }
@@ -123,12 +126,13 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
 
     fun poke() { lastInteraction = System.currentTimeMillis(); controlsVisible = true }
 
-    // Buffering never shows or keeps the OSD open: only an explicit pause holds the controls on screen.
+    // The OSD is driven purely by remote input: buffering, stalls and errors never show it, and only an
+    // explicit user pause keeps it on screen past the timeout.
     val latestState by rememberUpdatedState(state)
-    LaunchedEffect(lastInteraction, panel) {
-        if (panel != Panel.NONE) return@LaunchedEffect
+    LaunchedEffect(lastInteraction, panel, controlsVisible) {
+        if (panel != Panel.NONE || !controlsVisible) return@LaunchedEffect
         delay(OSD_TIMEOUT_MS)
-        if (latestState.isPlaying || latestState.isBuffering) controlsVisible = false
+        if (!latestState.isPaused) controlsVisible = false
     }
     LaunchedEffect(controlsVisible, panel) {
         if (panel != Panel.NONE) return@LaunchedEffect
@@ -139,7 +143,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     BackHandler {
         when {
             panel != Panel.NONE -> panel = Panel.NONE
-            controlsVisible && (state.isPlaying || state.isBuffering) -> controlsVisible = false
+            controlsVisible && !state.isPaused -> controlsVisible = false
             else -> onBack()
         }
     }
@@ -188,11 +192,12 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                         else -> false
                     }
                 }
-                // Any remote interaction (including D-pad moves between OSD buttons) restarts the auto-hide countdown.
-                if (panel == Panel.NONE && (handled || controlsVisible)) poke()
+                // Only D-pad navigation/OK reveal the OSD or restart its countdown; media/channel keys act silently.
+                val dpad = event.key in DPAD_KEYS
+                if (panel == Panel.NONE && (controlsVisible || (handled && dpad))) poke()
                 handled
             }
-            .clickable(interactionSource = null, indication = null) { if (controlsVisible && (state.isPlaying || state.isBuffering)) controlsVisible = false else poke() },
+            .clickable(interactionSource = null, indication = null) { if (controlsVisible && !state.isPaused) controlsVisible = false else poke() },
     ) {
         AndroidView(
             factory = { ctx ->
