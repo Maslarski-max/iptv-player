@@ -11,7 +11,3 @@
 -keep,allowobfuscation,allowshrinking interface retrofit2.Call
 -keep,allowobfuscation,allowshrinking class retrofit2.Response
 -keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
-
-# LibVLC is driven through JNI; keep its Java side intact.
--keep class org.videolan.libvlc.** { *; }
--keep class org.videolan.libvlc.interfaces.** { *; }

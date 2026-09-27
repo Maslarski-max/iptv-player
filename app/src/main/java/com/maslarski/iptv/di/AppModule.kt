@@ -73,5 +73,5 @@ object AppModule {
         .build()
         .create(TmdbApi::class.java)
 
-    const val USER_AGENT = "IPTVPlayer/1.0 (Android; LibVLC)"
+    const val USER_AGENT = "IPTVPlayer/1.0 (Android; Media3)"
 }
