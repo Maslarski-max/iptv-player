@@ -90,8 +90,8 @@ import com.maslarski.iptv.ui.settings.ManageCategoriesScreen
 import com.maslarski.iptv.ui.settings.SettingsScreen
 import com.maslarski.iptv.ui.theme.Palette
 
-private val TvOverscanTop = 36.dp
-private val TvOverscanBottom = 24.dp
+private val TvOverscanTop = 48.dp
+private val TvOverscanBottom = 32.dp
 
 private data class NavItem(val route: Route, val icon: ImageVector, val label: Int)
 
