@@ -316,8 +316,10 @@ class PlayerViewModel @Inject constructor(
             if (generation != prepareGeneration.get()) return@launch
             val media = Media(libVlc, Uri.parse(url)).apply {
                 setHWDecoderEnabled(true, false)
-                addOption(":network-caching=$NETWORK_CACHING_MS")
-                if (live) addOption(":live-caching=$NETWORK_CACHING_MS")
+                addOption(":network-caching=${PlayerModule.NETWORK_CACHING_MS}")
+                addOption(":live-caching=${PlayerModule.LIVE_CACHING_MS}")
+                addOption(":file-caching=${PlayerModule.FILE_CACHING_MS}")
+                addOption(":sout-mux-caching=${PlayerModule.SOUT_MUX_CACHING_MS}")
                 if (startPosition > 0L) addOption(":start-time=${startPosition / 1000}")
             }
             player.media = media
@@ -510,6 +512,5 @@ class PlayerViewModel @Inject constructor(
     companion object { const val MAX_RECONNECTS = 8 }
 }
 
-private const val NETWORK_CACHING_MS = PlayerModule.NETWORK_CACHING_MS
 private const val SEEK_BACK_MS = 10_000L
 private const val SEEK_FORWARD_MS = 30_000L

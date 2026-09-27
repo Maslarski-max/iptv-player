@@ -7,7 +7,7 @@ phones and tablets.
 - Xtream Codes and M3U/M3U8 playlists (URL or local file), XMLTV EPG with grid guide
 - Live TV, Movies, Series → Seasons → Episodes, Continue Watching, Favorites, global search
 - Multiple playlists, PIN-locked categories, background auto-sync (WorkManager)
-- LibVLC player (network-caching 5 s, MediaCodec NDK/JNI with software fallback): audio tracks, embedded + external subtitles (.srt/.vtt), aspect modes, auto-reconnect
+- LibVLC player (low-latency caching 250/150 ms tuned for 32-bit boxes, MediaCodec NDK/JNI with software fallback, late-frame dropping): audio tracks, embedded + external subtitles (.srt/.vtt), aspect modes, auto-reconnect
 - Offline-first Room cache, Hilt DI, Coroutines/Flow, strict MVVM
 - Localised: English, Spanish, French, German, Italian, Arabic, Turkish, Macedonian
 - TMDB enrichment: movies/series missing a poster or synopsis are completed from TheMovieDB in the background

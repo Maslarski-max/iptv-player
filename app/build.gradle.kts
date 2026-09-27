@@ -99,6 +99,19 @@ android {
     }
 }
 
+// Per-ABI version codes for Play multi-APK: versionCode * 1000 + ABI offset, so 64-bit always
+// outranks 32-bit (v7a=1001, arm64=1002 for versionCode 1) and the universal APK ranks highest.
+val abiVersionCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 3, "x86_64" to 4)
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            val abi = output.filters.find { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }?.identifier
+            val base = output.versionCode.orNull ?: 1
+            output.versionCode.set(base * 1000 + (abi?.let { abiVersionCodes[it] } ?: 9))
+        }
+    }
+}
+
 kotlin {
     compilerOptions {
         freeCompilerArgs.addAll(
