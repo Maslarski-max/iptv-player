@@ -110,6 +110,8 @@ import java.util.Locale
 
 private enum class Panel { NONE, AUDIO, SUBTITLES, GUIDE, SETTINGS }
 
+private val DPAD_KEYS = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.DirectionCenter, Key.Enter)
+
 @UnstableApi
 @Composable
 fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
@@ -198,8 +200,8 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                         else -> false
                     }
                 }
-                // Keys restart the countdown only while the OSD is already visible; nothing reveals it implicitly.
-                if (panel == Panel.NONE && controlsVisible) poke()
+                // Only D-pad keys restart the countdown, and only while the OSD is already visible; nothing reveals it implicitly.
+                if (panel == Panel.NONE && controlsVisible && event.key in DPAD_KEYS) poke()
                 handled
             }
             .clickable(interactionSource = null, indication = null) { if (controlsVisible && !state.isPaused) controlsVisible = false },
@@ -404,8 +406,8 @@ private fun Controls(
             if (!state.isLive) ControlButton(Icons.Filled.Replay10, stringResource(R.string.player_rewind), onSeekBack)
             Spacer(Modifier.width(16.dp))
             ControlButton(
-                if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                stringResource(if (state.isPlaying) R.string.player_pause else R.string.player_play),
+                if (state.isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                stringResource(if (state.isPaused) R.string.player_play else R.string.player_pause),
                 onTogglePlay, size = 72.dp, modifier = Modifier.focusRequester(playFocus),
             )
             Spacer(Modifier.width(16.dp))

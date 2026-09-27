@@ -156,7 +156,7 @@ class PlayerViewModel @Inject constructor(
                 )
                 .setLiveTargetOffsetMs(LIVE_TARGET_OFFSET_MS),
         )
-        .setHandleAudioBecomingNoisy(false)
+        .setHandleAudioBecomingNoisy(true)
         .setSeekBackIncrementMs(10_000)
         .setSeekForwardIncrementMs(30_000)
         .build()
@@ -427,7 +427,7 @@ class PlayerViewModel @Inject constructor(
 
     // ---------------------------------------------------------------- controls
 
-    fun togglePlayPause() { if (player.isPlaying) player.pause() else player.play() }
+    fun togglePlayPause() { if (player.playWhenReady) player.pause() else player.play() }
     fun play() = player.play()
     fun pause() = player.pause()
     fun seekForward() { if (!_state.value.isLive) player.seekForward() }
