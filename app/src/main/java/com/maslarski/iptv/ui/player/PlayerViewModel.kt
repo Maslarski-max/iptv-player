@@ -5,26 +5,9 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.C
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
-import androidx.media3.common.TrackGroup
-import androidx.media3.common.TrackSelectionOverride
-import androidx.media3.common.Tracks
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
-import io.sentry.okhttp.SentryOkHttpInterceptor
-import java.util.concurrent.TimeUnit
-import androidx.media3.exoplayer.DefaultRenderersFactory
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.navigation.toRoute
 import com.maslarski.iptv.data.repository.ContentRepository
+import com.maslarski.iptv.di.PlayerModule
 import com.maslarski.iptv.data.repository.PlaylistRepository
 import com.maslarski.iptv.data.settings.AspectRatioMode
 import com.maslarski.iptv.data.settings.LastChannel
@@ -58,12 +41,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.abs
+import org.videolan.libvlc.LibVLC
+import org.videolan.libvlc.Media
+import org.videolan.libvlc.MediaPlayer
+import org.videolan.libvlc.interfaces.IMedia
+import org.videolan.libvlc.util.VLCVideoLayout
 
-data class TrackOption(val group: TrackGroup, val index: Int, val label: String, val selected: Boolean)
+data class TrackOption(val id: Int, val type: Int, val label: String, val selected: Boolean)
 
 data class PlayerUiState(
     val title: String = "",
@@ -71,7 +58,7 @@ data class PlayerUiState(
     val contentType: ContentType = ContentType.LIVE,
     val isLive: Boolean = false,
     val isPlaying: Boolean = false,
-    /** User intent (`playWhenReady`): false only after an explicit pause, never during stalls or rebuffering. */
+    /** User intent: false only after an explicit pause, never during stalls or rebuffering. */
     val isPaused: Boolean = false,
     val isBuffering: Boolean = true,
     val positionMillis: Long = 0L,
@@ -82,6 +69,7 @@ data class PlayerUiState(
     val audioTracks: List<TrackOption> = emptyList(),
     val subtitleTracks: List<TrackOption> = emptyList(),
     val subtitlesEnabled: Boolean = true,
+    val isMuted: Boolean = false,
     val nowPlaying: EpgProgram? = null,
     val nextProgram: EpgProgram? = null,
     val channelNumber: Int? = null,
@@ -102,7 +90,6 @@ data class LiveGuideState(
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
-@UnstableApi
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -112,7 +99,7 @@ class PlayerViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val gate: ParentalGate,
     private val reminders: ReminderManager,
-    okHttp: OkHttpClient,
+    private val libVlc: LibVLC,
 ) : ViewModel() {
 
     private val route = savedState.toRoute<Route.Player>()
@@ -121,45 +108,11 @@ class PlayerViewModel @Inject constructor(
     )
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
-    private val trackSelector = DefaultTrackSelector(context).apply {
-        setParameters(buildUponParameters().setPreferredTextLanguage(Locale.getDefault().language))
-    }
+    val player: MediaPlayer = MediaPlayer(libVlc)
 
-    val player: ExoPlayer = ExoPlayer.Builder(
-        context,
-        DefaultRenderersFactory(context)
-            .setEnableDecoderFallback(true)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF),
-    )
-        .setTrackSelector(trackSelector)
-        .setLoadControl(
-            DefaultLoadControl.Builder()
-                .setBufferDurationsMs(MIN_BUFFER_MS, MAX_BUFFER_MS, BUFFER_FOR_PLAYBACK_MS, BUFFER_AFTER_REBUFFER_MS)
-                .setPrioritizeTimeOverSizeThresholds(true)
-                .build(),
-        )
-        .setMediaSourceFactory(
-            DefaultMediaSourceFactory(context)
-                .setDataSourceFactory(
-                    DefaultDataSource.Factory(
-                        context,
-                        OkHttpDataSource.Factory(
-                            okHttp.newBuilder()
-                        .apply { interceptors().removeAll { it is SentryOkHttpInterceptor } }
-                                .connectTimeout(NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                                .readTimeout(NETWORK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                                .followRedirects(true)
-                                .followSslRedirects(true)
-                                .build(),
-                        ).setUserAgent("IPTVPlayer/1.0 (Android)"),
-                    ),
-                )
-                .setLiveTargetOffsetMs(LIVE_TARGET_OFFSET_MS),
-        )
-        .setHandleAudioBecomingNoisy(true)
-        .setSeekBackIncrementMs(10_000)
-        .setSeekForwardIncrementMs(30_000)
-        .build()
+    /** Last URL + options handed to VLC, replayed verbatim on reconnect. */
+    private var currentUrl: String? = null
+    private var currentIsLive = false
 
     private var channelList: List<Channel> = emptyList()
     private var channelIndex = -1
@@ -230,34 +183,26 @@ class PlayerViewModel @Inject constructor(
     private var epgJob: Job? = null
     private var lastSavedPosition = 0L
 
-    private val listener = object : Player.Listener {
-        override fun onIsPlayingChanged(isPlaying: Boolean) { _state.update { it.copy(isPlaying = isPlaying) } }
-
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            _state.update { it.copy(isPaused = !playWhenReady) }
-        }
-
-        override fun onPlaybackStateChanged(playbackState: Int) {
-            _state.update {
-                it.copy(
-                    isBuffering = playbackState == Player.STATE_BUFFERING,
-                    error = if (playbackState == Player.STATE_READY) null else it.error,
-                    reconnectAttempt = if (playbackState == Player.STATE_READY) 0 else it.reconnectAttempt,
-                )
+    private val listener = MediaPlayer.EventListener { event ->
+        when (event.type) {
+            MediaPlayer.Event.Playing -> _state.update {
+                it.copy(isPlaying = true, isBuffering = false, error = null, reconnectAttempt = 0)
             }
-            if (playbackState == Player.STATE_ENDED) onEnded()
+            MediaPlayer.Event.Paused, MediaPlayer.Event.Stopped -> _state.update { it.copy(isPlaying = false) }
+            // VLC keeps reporting cache fill while playing; only a partial fill means the stream is actually stalled.
+            MediaPlayer.Event.Buffering -> _state.update { it.copy(isBuffering = event.buffering < 100f) }
+            MediaPlayer.Event.EncounteredError -> {
+                _state.update { it.copy(error = "PLAYBACK_ERROR", isBuffering = false, isPlaying = false) }
+                scheduleReconnect()
+            }
+            MediaPlayer.Event.EndReached -> if (_state.value.isLive) scheduleReconnect() else onEnded()
+            MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted, MediaPlayer.Event.ESSelected -> refreshTracks()
+            MediaPlayer.Event.LengthChanged -> _state.update { it.copy(durationMillis = event.lengthChanged.coerceAtLeast(0L)) }
         }
-
-        override fun onPlayerError(error: PlaybackException) {
-            _state.update { it.copy(error = error.errorCodeName) }
-            scheduleReconnect()
-        }
-
-        override fun onTracksChanged(tracks: Tracks) { refreshTracks(tracks) }
     }
 
     init {
-        player.addListener(listener)
+        player.setEventListener(listener)
         viewModelScope.launch {
             _state.update { it.copy(aspect = settings.current().aspectRatio) }
             when (route.contentType) {
@@ -269,9 +214,10 @@ class PlayerViewModel @Inject constructor(
         progressJob = viewModelScope.launch {
             while (isActive) {
                 delay(1_000)
-                val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
-                _state.update { it.copy(positionMillis = player.currentPosition, durationMillis = duration) }
-                if (!_state.value.isLive && duration > 0 && abs(player.currentPosition - lastSavedPosition) > 5_000) {
+                val duration = player.length.coerceAtLeast(0L)
+                val position = player.time.coerceAtLeast(0L)
+                _state.update { it.copy(positionMillis = position, durationMillis = duration) }
+                if (!_state.value.isLive && duration > 0 && abs(position - lastSavedPosition) > 5_000) {
                     persistProgress()
                 }
             }
@@ -350,28 +296,34 @@ class PlayerViewModel @Inject constructor(
 
     private fun prepare(url: String, live: Boolean, startPosition: Long = 0L) {
         reconnectJob?.cancel()
-        val builder = MediaItem.Builder().setUri(url)
-        if (live) builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.02f).build())
-        player.setMediaItem(builder.build(), startPosition)
-        player.prepare()
-        player.playWhenReady = true
-    }
-
-    /** Adds an external .srt/.vtt sidecar (picked by the user) to the current item. */
-    fun addExternalSubtitle(uri: Uri) {
-        val current = player.currentMediaItem ?: return
-        val position = player.currentPosition
-        val name = uri.lastPathSegment.orEmpty()
-        val config = MediaItem.SubtitleConfiguration.Builder(uri)
-            .setMimeType(if (name.endsWith(".vtt", true)) MimeTypes.TEXT_VTT else MimeTypes.APPLICATION_SUBRIP)
-            .setLabel(name.substringAfterLast('/'))
-            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-            .build()
-        val updated = current.buildUpon().setSubtitleConfigurations(current.localConfiguration?.subtitleConfigurations.orEmpty() + config).build()
-        player.setMediaItem(updated, position)
-        player.prepare()
+        currentUrl = url
+        currentIsLive = live
+        _state.update { it.copy(isBuffering = true, isPaused = false, audioTracks = emptyList(), subtitleTracks = emptyList()) }
+        val media = Media(libVlc, Uri.parse(url)).apply {
+            setHWDecoderEnabled(true, false)
+            addOption(":network-caching=$NETWORK_CACHING_MS")
+            if (live) addOption(":live-caching=$NETWORK_CACHING_MS")
+            if (startPosition > 0L) addOption(":start-time=${startPosition / 1000}")
+        }
+        player.stop()
+        player.media = media
+        media.release()
         player.play()
     }
+
+    /** Adds an external .srt/.vtt sidecar (picked by the user) to the current item and selects it. */
+    fun addExternalSubtitle(uri: Uri) {
+        player.addSlave(IMedia.Slave.Type.Subtitle, uri, true)
+        _state.update { it.copy(subtitlesEnabled = true) }
+    }
+
+    /** Binds / unbinds the Compose-hosted surface; VLC starts video output as soon as a surface is attached. */
+    fun attachVideo(layout: VLCVideoLayout) {
+        if (!player.vlcVout.areViewsAttached()) player.attachViews(layout, null, true, false)
+        applyScale(_state.value.aspect)
+    }
+
+    fun detachVideo() { player.detachViews() }
 
     // -------------------------------------------------------------- reconnect
 
@@ -382,59 +334,83 @@ class PlayerViewModel @Inject constructor(
             if (attempt > MAX_RECONNECTS) return@launch
             _state.update { it.copy(reconnectAttempt = attempt) }
             delay((1_000L * attempt).coerceAtMost(8_000L))
-            val position = if (_state.value.isLive) C.TIME_UNSET else player.currentPosition
-            player.seekToDefaultPosition()
-            if (position != C.TIME_UNSET) player.seekTo(position)
-            player.prepare()
-            player.playWhenReady = true
+            val url = currentUrl ?: return@launch
+            val resume = if (currentIsLive) 0L else player.time.coerceAtLeast(0L)
+            prepare(url, currentIsLive, resume)
+            _state.update { it.copy(reconnectAttempt = attempt) }
         }
     }
 
     // ------------------------------------------------------------------ tracks
 
-    private fun refreshTracks(tracks: Tracks) {
-        fun options(type: Int): List<TrackOption> = tracks.groups.filter { it.type == type && it.isSupported }.flatMap { g ->
-            (0 until g.length).map { i ->
-                val f = g.getTrackFormat(i)
-                val label = listOfNotNull(f.label, f.language?.let { Locale.forLanguageTag(it).displayLanguage.ifBlank { it } })
-                    .distinct().joinToString(" · ").ifBlank { "Track ${i + 1}" }
-                TrackOption(g.mediaTrackGroup, i, label, g.isTrackSelected(i))
+    private fun refreshTracks() {
+        fun options(type: Int, descriptions: Array<MediaPlayer.TrackDescription>?, selectedId: Int): List<TrackOption> =
+            descriptions.orEmpty().filter { it.id >= 0 }.mapIndexed { i, d ->
+                TrackOption(d.id, type, d.name?.takeIf { it.isNotBlank() } ?: "Track ${i + 1}", d.id == selectedId)
             }
-        }
-        val subs = options(C.TRACK_TYPE_TEXT)
+        val spuId = player.spuTrack
         _state.update {
             it.copy(
-                audioTracks = options(C.TRACK_TYPE_AUDIO),
-                subtitleTracks = subs,
-                subtitlesEnabled = !player.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_TEXT),
+                audioTracks = options(IMedia.Track.Type.Audio, player.audioTracks, player.audioTrack),
+                subtitleTracks = options(IMedia.Track.Type.Text, player.spuTracks, spuId),
+                subtitlesEnabled = spuId >= 0,
             )
         }
     }
 
     fun selectTrack(option: TrackOption) {
-        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-            .setTrackTypeDisabled(option.group.type, false)
-            .setOverrideForType(TrackSelectionOverride(option.group, option.index))
-            .build()
+        when (option.type) {
+            IMedia.Track.Type.Audio -> player.setAudioTrack(option.id)
+            IMedia.Track.Type.Text -> player.setSpuTrack(option.id)
+        }
+        refreshTracks()
     }
 
     fun disableSubtitles() {
-        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-            .build()
+        player.setSpuTrack(-1)
         _state.update { it.copy(subtitlesEnabled = false) }
+        refreshTracks()
     }
 
     // ---------------------------------------------------------------- controls
 
-    fun togglePlayPause() { if (player.playWhenReady) player.pause() else player.play() }
-    fun play() = player.play()
-    fun pause() = player.pause()
-    fun seekForward() { if (!_state.value.isLive) player.seekForward() }
-    fun seekBack() { if (!_state.value.isLive) player.seekBack() }
+    fun togglePlayPause() { if (_state.value.isPaused) play() else pause() }
+
+    fun play() {
+        _state.update { it.copy(isPaused = false) }
+        player.play()
+    }
+
+    fun pause() {
+        _state.update { it.copy(isPaused = true) }
+        player.pause()
+    }
+
+    fun stop() {
+        _state.update { it.copy(isPaused = true, isPlaying = false) }
+        player.stop()
+    }
+
+    fun toggleMute() {
+        val muted = player.volume == 0
+        player.volume = if (muted) 100 else 0
+        _state.update { it.copy(isMuted = !muted) }
+    }
+
+    fun seekForward() = seekBy(SEEK_FORWARD_MS)
+    fun seekBack() = seekBy(-SEEK_BACK_MS)
+
+    private fun seekBy(deltaMs: Long) {
+        if (_state.value.isLive || !player.isSeekable) return
+        val length = player.length.coerceAtLeast(0L)
+        val target = (player.time + deltaMs).coerceIn(0L, if (length > 0) length else Long.MAX_VALUE)
+        player.time = target
+        _state.update { it.copy(positionMillis = target) }
+    }
+
     fun seekTo(fraction: Float) {
-        val d = player.duration.takeIf { it != C.TIME_UNSET } ?: return
-        player.seekTo((d * fraction.coerceIn(0f, 1f)).toLong())
+        if (!player.isSeekable || player.length <= 0L) return
+        player.position = fraction.coerceIn(0f, 1f)
     }
 
     fun channelUp() = switchChannel(+1)
@@ -453,7 +429,18 @@ class PlayerViewModel @Inject constructor(
 
     fun setAspect(mode: AspectRatioMode) {
         _state.update { it.copy(aspect = mode) }
+        applyScale(mode)
         viewModelScope.launch { settings.setAspectRatio(mode) }
+    }
+
+    private fun applyScale(mode: AspectRatioMode) {
+        player.videoScale = when (mode) {
+            AspectRatioMode.FIT -> MediaPlayer.ScaleType.SURFACE_BEST_FIT
+            AspectRatioMode.RATIO_16_9 -> MediaPlayer.ScaleType.SURFACE_16_9
+            AspectRatioMode.RATIO_4_3 -> MediaPlayer.ScaleType.SURFACE_4_3
+            AspectRatioMode.ZOOM -> MediaPlayer.ScaleType.SURFACE_FIT_SCREEN
+            AspectRatioMode.STRETCH -> MediaPlayer.ScaleType.SURFACE_FILL
+        }
     }
 
     fun playNextEpisode() {
@@ -475,8 +462,8 @@ class PlayerViewModel @Inject constructor(
     private suspend fun persistProgress(finished: Boolean = false) {
         val s = _state.value
         if (s.isLive) return
-        val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: return
-        val position = if (finished) duration else player.currentPosition
+        val duration = player.length.takeIf { it > 0L } ?: return
+        val position = if (finished) duration else player.time.coerceAtLeast(0L)
         lastSavedPosition = position
         content.saveProgress(
             playlistId = route.playlistId,
@@ -493,7 +480,9 @@ class PlayerViewModel @Inject constructor(
     override fun onCleared() {
         reconnectJob?.cancel()
         progressJob?.cancel()
-        player.removeListener(listener)
+        player.setEventListener(null)
+        player.stop()
+        player.detachViews()
         player.release()
         super.onCleared()
     }
@@ -501,9 +490,6 @@ class PlayerViewModel @Inject constructor(
     companion object { const val MAX_RECONNECTS = 8 }
 }
 
-private const val MIN_BUFFER_MS = 5_000
-private const val MAX_BUFFER_MS = 15_000
-private const val BUFFER_FOR_PLAYBACK_MS = 2_500
-private const val BUFFER_AFTER_REBUFFER_MS = 4_000
-private const val NETWORK_TIMEOUT_MS = 15_000L
-private const val LIVE_TARGET_OFFSET_MS = 6_000L
+private const val NETWORK_CACHING_MS = PlayerModule.NETWORK_CACHING_MS
+private const val SEEK_BACK_MS = 10_000L
+private const val SEEK_FORWARD_MS = 30_000L
