@@ -251,7 +251,9 @@ class PlayerViewModel @Inject constructor(
                     reconnectAttempt = if (playbackState == Player.STATE_READY) 0 else it.reconnectAttempt,
                 )
             }
-            if (playbackState == Player.STATE_ENDED) onEnded()
+            if (playbackState == Player.STATE_ENDED) {
+                if (_state.value.isLive) scheduleReconnect() else onEnded()
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -374,6 +376,10 @@ class PlayerViewModel @Inject constructor(
             .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
             .build()
         val updated = current.buildUpon().setSubtitleConfigurations(current.localConfiguration?.subtitleConfigurations.orEmpty() + config).build()
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .build()
+        _state.update { it.copy(subtitlesEnabled = true) }
         player.setMediaItem(updated, position)
         player.prepare()
         player.play()
