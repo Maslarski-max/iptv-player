@@ -127,11 +127,17 @@ class PlayerViewModel @Inject constructor(
 
     val player: ExoPlayer = ExoPlayer.Builder(
         context,
+        // Keep one MediaCodec + Surface alive across TS/HLS format or resolution changes: codec reuse is
+        // on, generous joining time lets the renderer adapt in place instead of re-initialising, and
+        // Surface.setFrameRate is never called so the display/surface is not reset mid-stream.
         DefaultRenderersFactory(context)
             .setEnableDecoderFallback(true)
+            .setAllowedVideoJoiningTimeMs(VIDEO_JOINING_TIME_MS)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF),
     )
         .setTrackSelector(trackSelector)
+        .setVideoChangeFrameRateStrategy(C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF)
+        .setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
         .setLoadControl(
             DefaultLoadControl.Builder()
                 .setBufferDurationsMs(MIN_BUFFER_MS, MAX_BUFFER_MS, BUFFER_FOR_PLAYBACK_MS, BUFFER_AFTER_REBUFFER_MS)
@@ -501,9 +507,10 @@ class PlayerViewModel @Inject constructor(
     companion object { const val MAX_RECONNECTS = 8 }
 }
 
-private const val MIN_BUFFER_MS = 5_000
-private const val MAX_BUFFER_MS = 15_000
-private const val BUFFER_FOR_PLAYBACK_MS = 2_500
-private const val BUFFER_AFTER_REBUFFER_MS = 4_000
+private const val MIN_BUFFER_MS = 2_500
+private const val MAX_BUFFER_MS = 8_000
+private const val BUFFER_FOR_PLAYBACK_MS = 1_000
+private const val BUFFER_AFTER_REBUFFER_MS = 2_000
+private const val VIDEO_JOINING_TIME_MS = 10_000L
 private const val NETWORK_TIMEOUT_MS = 15_000L
-private const val LIVE_TARGET_OFFSET_MS = 6_000L
+private const val LIVE_TARGET_OFFSET_MS = 4_000L
