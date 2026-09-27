@@ -1,6 +1,10 @@
 package com.maslarski.iptv.ui.player
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.media.AudioManager
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -208,8 +212,16 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /** Pauses when headphones / Bluetooth audio disconnect so playback never jumps to the speakers. */
+    private val noisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            if (intent.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY && !_state.value.isPaused) pause()
+        }
+    }
+
     init {
         player.setEventListener(listener)
+        context.registerReceiver(noisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
         viewModelScope.launch {
             _state.update { it.copy(aspect = settings.current().aspectRatio) }
             when (route.contentType) {
@@ -338,12 +350,15 @@ class PlayerViewModel @Inject constructor(
         applyScale(_state.value.aspect)
     }
 
-    fun detachVideo() { player.detachViews() }
+    fun detachVideo() {
+        if (player.vlcVout.areViewsAttached()) player.detachViews()
+    }
 
     // -------------------------------------------------------------- reconnect
 
     private fun scheduleReconnect() {
         reconnectJob?.cancel()
+        if (_state.value.isPaused) return
         reconnectJob = viewModelScope.launch {
             val attempt = _state.value.reconnectAttempt + 1
             if (attempt > MAX_RECONNECTS) return@launch
@@ -393,10 +408,16 @@ class PlayerViewModel @Inject constructor(
 
     fun play() {
         _state.update { it.copy(isPaused = false) }
-        player.play()
+        val url = currentUrl
+        if (_state.value.error != null && url != null) {
+            prepare(url, currentIsLive, if (currentIsLive) 0L else _state.value.positionMillis)
+        } else {
+            player.play()
+        }
     }
 
     fun pause() {
+        reconnectJob?.cancel()
         _state.update { it.copy(isPaused = true) }
         player.pause()
     }
@@ -497,8 +518,9 @@ class PlayerViewModel @Inject constructor(
     override fun onCleared() {
         reconnectJob?.cancel()
         progressJob?.cancel()
+        context.unregisterReceiver(noisyReceiver)
         player.setEventListener(null)
-        player.detachViews()
+        detachVideo()
         vlcExecutor.execute {
             player.stop()
             player.release()
