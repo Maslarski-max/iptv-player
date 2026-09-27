@@ -26,6 +26,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.math.abs
 import org.videolan.libvlc.LibVLC
@@ -109,6 +112,10 @@ class PlayerViewModel @Inject constructor(
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     val player: MediaPlayer = MediaPlayer(libVlc)
+
+    private val vlcExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "vlc-control") }
+    private val vlcThread = vlcExecutor.asCoroutineDispatcher()
+    private val prepareGeneration = AtomicInteger()
 
     /** Last URL + options handed to VLC, replayed verbatim on reconnect. */
     private var currentUrl: String? = null
@@ -294,21 +301,29 @@ class PlayerViewModel @Inject constructor(
         prepare(episode.streamUrl, live = false, startPosition = resume)
     }
 
+    /**
+     * `MediaPlayer.stop()` joins the VLC input thread, which can block for seconds on a
+     * stalled network, so every stop/media switch runs on [vlcThread] and never on main.
+     */
     private fun prepare(url: String, live: Boolean, startPosition: Long = 0L) {
         reconnectJob?.cancel()
         currentUrl = url
         currentIsLive = live
+        val generation = prepareGeneration.incrementAndGet()
         _state.update { it.copy(isBuffering = true, isPaused = false, audioTracks = emptyList(), subtitleTracks = emptyList()) }
-        val media = Media(libVlc, Uri.parse(url)).apply {
-            setHWDecoderEnabled(true, false)
-            addOption(":network-caching=$NETWORK_CACHING_MS")
-            if (live) addOption(":live-caching=$NETWORK_CACHING_MS")
-            if (startPosition > 0L) addOption(":start-time=${startPosition / 1000}")
+        viewModelScope.launch(vlcThread) {
+            player.stop()
+            if (generation != prepareGeneration.get()) return@launch
+            val media = Media(libVlc, Uri.parse(url)).apply {
+                setHWDecoderEnabled(true, false)
+                addOption(":network-caching=$NETWORK_CACHING_MS")
+                if (live) addOption(":live-caching=$NETWORK_CACHING_MS")
+                if (startPosition > 0L) addOption(":start-time=${startPosition / 1000}")
+            }
+            player.media = media
+            media.release()
+            player.play()
         }
-        player.stop()
-        player.media = media
-        media.release()
-        player.play()
     }
 
     /** Adds an external .srt/.vtt sidecar (picked by the user) to the current item and selects it. */
@@ -387,8 +402,10 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun stop() {
-        _state.update { it.copy(isPaused = true, isPlaying = false) }
-        player.stop()
+        reconnectJob?.cancel()
+        prepareGeneration.incrementAndGet()
+        _state.update { it.copy(isPaused = true, isPlaying = false, isBuffering = false) }
+        viewModelScope.launch(vlcThread) { player.stop() }
     }
 
     fun toggleMute() {
@@ -481,9 +498,12 @@ class PlayerViewModel @Inject constructor(
         reconnectJob?.cancel()
         progressJob?.cancel()
         player.setEventListener(null)
-        player.stop()
         player.detachViews()
-        player.release()
+        vlcExecutor.execute {
+            player.stop()
+            player.release()
+        }
+        vlcExecutor.shutdown()
         super.onCleared()
     }
 
