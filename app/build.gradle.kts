@@ -87,16 +87,6 @@ android {
     packaging {
         resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
     }
-
-    // libvlc.so is ~40-50 MB per ABI; ship per-ABI APKs for sideloading plus a universal one.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = true
-        }
-    }
 }
 
 kotlin {
@@ -142,8 +132,14 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-
-    implementation(libs.libvlc.all)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.hls)
+    implementation(libs.androidx.media3.exoplayer.dash)
+    implementation(libs.androidx.media3.exoplayer.rtsp)
+    implementation(libs.androidx.media3.datasource.okhttp)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.ui.compose)
+    implementation(libs.androidx.media3.session)
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.work.runtime.ktx)

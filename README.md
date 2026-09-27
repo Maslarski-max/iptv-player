@@ -1,13 +1,13 @@
 # MaxTV Player
 
-Modern Android IPTV client built with Kotlin, Jetpack Compose and LibVLC. Designed first for
+Modern Android IPTV client built with Kotlin, Jetpack Compose and Media3. Designed first for
 Android TV / Fire TV (D-pad navigation, focus glow, cinematic dark theme) and adaptive for
 phones and tablets.
 
 - Xtream Codes and M3U/M3U8 playlists (URL or local file), XMLTV EPG with grid guide
 - Live TV, Movies, Series → Seasons → Episodes, Continue Watching, Favorites, global search
 - Multiple playlists, PIN-locked categories, background auto-sync (WorkManager)
-- LibVLC player (network-caching 5 s, MediaCodec NDK/JNI with software fallback): audio tracks, embedded + external subtitles (.srt/.vtt), aspect modes, auto-reconnect
+- Media3/ExoPlayer: audio tracks, embedded + external subtitles (.srt/.vtt), aspect modes, auto-reconnect
 - Offline-first Room cache, Hilt DI, Coroutines/Flow, strict MVVM
 - Localised: English, Spanish, French, German, Italian, Arabic, Turkish, Macedonian
 - TMDB enrichment: movies/series missing a poster or synopsis are completed from TheMovieDB in the background

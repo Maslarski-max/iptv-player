@@ -85,6 +85,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.maslarski.iptv.R
 import com.maslarski.iptv.data.settings.AspectRatioMode
 import com.maslarski.iptv.domain.model.Channel
@@ -104,12 +107,12 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import org.videolan.libvlc.util.VLCVideoLayout
 
 private enum class Panel { NONE, AUDIO, SUBTITLES, GUIDE, SETTINGS }
 
 private val DPAD_KEYS = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.DirectionCenter, Key.Enter)
 
+@UnstableApi
 @Composable
 fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -169,8 +172,6 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                     KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { viewModel.togglePlayPause(); true }
                     KeyEvent.KEYCODE_MEDIA_PLAY -> { viewModel.play(); true }
                     KeyEvent.KEYCODE_MEDIA_PAUSE -> { viewModel.pause(); true }
-                    KeyEvent.KEYCODE_MEDIA_STOP -> { viewModel.stop(); true }
-                    KeyEvent.KEYCODE_MUTE, KeyEvent.KEYCODE_VOLUME_MUTE -> { viewModel.toggleMute(); true }
                     KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { viewModel.seekForward(); true }
                     KeyEvent.KEYCODE_MEDIA_REWIND -> { viewModel.seekBack(); true }
                     KeyEvent.KEYCODE_MEDIA_NEXT -> { if (state.isLive) viewModel.channelUp() else viewModel.playNextEpisode(); true }
@@ -205,16 +206,25 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             }
             .clickable(interactionSource = null, indication = null) { if (controlsVisible && !state.isPaused) controlsVisible = false },
     ) {
-        // Aspect modes other than the exact ratios are handled by VLC's own scaling; 16:9 / 4:3 letterbox the surface itself.
         AndroidView(
             factory = { ctx ->
-                VLCVideoLayout(ctx).apply {
+                PlayerView(ctx).apply {
+                    useController = false
+                    setShutterBackgroundColor(android.graphics.Color.BLACK)
                     keepScreenOn = true
-                    setBackgroundColor(android.graphics.Color.BLACK)
-                    viewModel.attachVideo(this)
+                    setKeepContentOnPlayerReset(true)
                 }
             },
-            onRelease = { viewModel.detachVideo() },
+            update = { view ->
+                view.player = viewModel.player
+                view.resizeMode = when (state.aspect) {
+                    AspectRatioMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    AspectRatioMode.RATIO_16_9, AspectRatioMode.RATIO_4_3 -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    AspectRatioMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    AspectRatioMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                }
+                view.subtitleView?.setApplyEmbeddedStyles(true)
+            },
             modifier = when (state.aspect) {
                 AspectRatioMode.RATIO_16_9 -> Modifier.fillMaxHeight().aspectRatio(16f / 9f, matchHeightConstraintsFirst = true).align(Alignment.Center)
                 AspectRatioMode.RATIO_4_3 -> Modifier.fillMaxHeight().aspectRatio(4f / 3f, matchHeightConstraintsFirst = true).align(Alignment.Center)
