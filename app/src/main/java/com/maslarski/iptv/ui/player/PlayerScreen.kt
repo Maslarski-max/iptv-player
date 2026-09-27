@@ -118,7 +118,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val guide by viewModel.guide.collectAsStateWithLifecycle()
     var reminderSelection by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
-    var controlsVisible by rememberSaveable { mutableStateOf(true) }
+    var controlsVisible by rememberSaveable { mutableStateOf(false) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var panel by remember { mutableStateOf(Panel.NONE) }
     val playFocus = remember { FocusRequester() }
