@@ -110,8 +110,6 @@ import java.util.Locale
 
 private enum class Panel { NONE, AUDIO, SUBTITLES, GUIDE, SETTINGS }
 
-private val DPAD_KEYS = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.DirectionCenter, Key.Enter)
-
 @UnstableApi
 @Composable
 fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
@@ -124,7 +122,17 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     val playFocus = remember { FocusRequester() }
     val rootFocus = remember { FocusRequester() }
 
+    var bannerVisible by remember { mutableStateOf(false) }
+
     fun poke() { lastInteraction = System.currentTimeMillis(); controlsVisible = true }
+
+    // Zapping shows only a short channel banner; the control row stays hidden.
+    LaunchedEffect(state.currentChannelId) {
+        if (state.currentChannelId == null) return@LaunchedEffect
+        bannerVisible = true
+        delay(BANNER_TIMEOUT_MS)
+        bannerVisible = false
+    }
 
     // The OSD is driven purely by remote input: buffering, stalls and errors never show it, and only an
     // explicit user pause keeps it on screen past the timeout.
@@ -172,8 +180,9 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                     KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { panel = Panel.SETTINGS; true }
                     KeyEvent.KEYCODE_GUIDE, KeyEvent.KEYCODE_TV -> { if (state.isLive) panel = Panel.GUIDE; state.isLive }
                     else -> when (event.key) {
-                        // Up/Down are navigation only: they reveal the OSD when hidden and otherwise move focus.
-                        Key.DirectionUp, Key.DirectionDown -> if (!controlsVisible && panel == Panel.NONE) { poke(); true } else false
+                        // Down is the only key that reveals the OSD; Up zaps on live streams. Both move focus once visible.
+                        Key.DirectionDown -> if (!controlsVisible && panel == Panel.NONE) { poke(); true } else false
+                        Key.DirectionUp -> if (!controlsVisible && panel == Panel.NONE) { if (state.isLive) viewModel.channelUp(); true } else false
                         Key.DirectionLeft -> when {
                             controlsVisible || panel != Panel.NONE -> false
                             state.isLive -> { panel = Panel.GUIDE; true }
@@ -184,20 +193,16 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                             state.isLive -> { panel = Panel.SETTINGS; true }
                             else -> { viewModel.seekForward(); true }
                         }
-                        Key.DirectionCenter, Key.Enter -> when {
-                            controlsVisible || panel != Panel.NONE -> false
-                            state.isLive -> { panel = Panel.GUIDE; true }
-                            else -> { poke(); true }
-                        }
+                        // OK only confirms/selects inside lists; on the bare video it is swallowed.
+                        Key.DirectionCenter, Key.Enter -> !controlsVisible && panel == Panel.NONE
                         else -> false
                     }
                 }
-                // Only D-pad navigation/OK reveal the OSD or restart its countdown; media/channel keys act silently.
-                val dpad = event.key in DPAD_KEYS
-                if (panel == Panel.NONE && (controlsVisible || (handled && dpad))) poke()
+                // Keys restart the countdown only while the OSD is already visible; nothing reveals it implicitly.
+                if (panel == Panel.NONE && controlsVisible) poke()
                 handled
             }
-            .clickable(interactionSource = null, indication = null) { if (controlsVisible && !state.isPaused) controlsVisible = false else poke() },
+            .clickable(interactionSource = null, indication = null) { if (controlsVisible && !state.isPaused) controlsVisible = false },
     ) {
         AndroidView(
             factory = { ctx ->
@@ -261,7 +266,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             )
         }
 
-        AnimatedVisibility(visible = controlsVisible, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopStart)) {
+        AnimatedVisibility(visible = controlsVisible || bannerVisible, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopStart)) {
             Column(Modifier.fillMaxWidth().background(Palette.HeroTopScrim).padding(32.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (state.channelNumber != null) {
@@ -285,7 +290,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
         }
 
         if (panel == Panel.GUIDE) {
-            val zap: (Channel) -> Unit = { viewModel.playFromGuide(it); panel = Panel.NONE; poke() }
+            val zap: (Channel) -> Unit = { viewModel.playFromGuide(it); panel = Panel.NONE }
             LiveGuideOverlay(
                 guide = guide,
                 state = state,
@@ -318,7 +323,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 onAudio = { panel = Panel.AUDIO },
                 onSubtitles = { panel = Panel.SUBTITLES },
                 onAspect = { viewModel.setAspect(it) },
-                onDismiss = { panel = Panel.NONE; poke() },
+                onDismiss = { panel = Panel.NONE },
             )
         }
         if (panel == Panel.AUDIO || panel == Panel.SUBTITLES) {
@@ -613,6 +618,7 @@ private fun TrackPanel(
 }
 
 private const val OSD_TIMEOUT_MS = 5_000L
+private const val BANNER_TIMEOUT_MS = 3_000L
 
 private fun formatTime(ms: Long): String {
     val total = ms / 1000
