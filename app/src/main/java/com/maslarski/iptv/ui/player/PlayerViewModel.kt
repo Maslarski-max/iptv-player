@@ -232,6 +232,7 @@ class PlayerViewModel @Inject constructor(
     private var currentEpisode: Episode? = null
     private var currentContentId: String = route.contentId
     private var reconnectJob: Job? = null
+    private var readySinceMillis = 0L
     private var progressJob: Job? = null
     private var epgJob: Job? = null
     private var lastSavedPosition = 0L
@@ -248,9 +249,9 @@ class PlayerViewModel @Inject constructor(
                 it.copy(
                     isBuffering = playbackState == Player.STATE_BUFFERING,
                     error = if (playbackState == Player.STATE_READY) null else it.error,
-                    reconnectAttempt = if (playbackState == Player.STATE_READY) 0 else it.reconnectAttempt,
                 )
             }
+            readySinceMillis = if (playbackState == Player.STATE_READY) System.currentTimeMillis() else 0L
             if (playbackState == Player.STATE_ENDED) {
                 if (_state.value.isLive) scheduleReconnect() else onEnded()
             }
@@ -278,6 +279,11 @@ class PlayerViewModel @Inject constructor(
             while (isActive) {
                 delay(1_000)
                 val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
+                if (_state.value.reconnectAttempt > 0 && readySinceMillis > 0 && player.isPlaying &&
+                    System.currentTimeMillis() - readySinceMillis >= STABLE_PLAYBACK_MS
+                ) {
+                    _state.update { it.copy(reconnectAttempt = 0) }
+                }
                 _state.update { it.copy(positionMillis = player.currentPosition, durationMillis = duration) }
                 if (!_state.value.isLive && duration > 0 && abs(player.currentPosition - lastSavedPosition) > 5_000) {
                     persistProgress()
@@ -358,6 +364,8 @@ class PlayerViewModel @Inject constructor(
 
     private fun prepare(url: String, live: Boolean, startPosition: Long = 0L) {
         reconnectJob?.cancel()
+        readySinceMillis = 0L
+        _state.update { it.copy(reconnectAttempt = 0) }
         val builder = MediaItem.Builder().setUri(url)
         if (live) builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.02f).build())
         player.setMediaItem(builder.build(), startPosition)
@@ -377,6 +385,7 @@ class PlayerViewModel @Inject constructor(
             .build()
         val updated = current.buildUpon().setSubtitleConfigurations(current.localConfiguration?.subtitleConfigurations.orEmpty() + config).build()
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
             .build()
         _state.update { it.copy(subtitlesEnabled = true) }
@@ -510,7 +519,10 @@ class PlayerViewModel @Inject constructor(
         super.onCleared()
     }
 
-    companion object { const val MAX_RECONNECTS = 8 }
+    companion object {
+        const val MAX_RECONNECTS = 8
+        private const val STABLE_PLAYBACK_MS = 10_000L
+    }
 }
 
 private const val MIN_BUFFER_MS = 2_500
