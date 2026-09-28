@@ -364,6 +364,8 @@ class PlayerViewModel @Inject constructor(
 
     private fun prepare(url: String, live: Boolean, startPosition: Long = 0L) {
         reconnectJob?.cancel()
+        readySinceMillis = 0L
+        _state.update { it.copy(reconnectAttempt = 0) }
         val builder = MediaItem.Builder().setUri(url)
         if (live) builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.02f).build())
         player.setMediaItem(builder.build(), startPosition)
