@@ -55,3 +55,11 @@ description: Boot an Android TV emulator and record an IPTV Compose app walkthro
 - OK enters purple Move Mode; verify the same item remains focused through each Up/Down swap. Independently test Back in category and channel Move Mode, Back outside Move Mode, Right expansion, and Left collapse from a child.
 - Verify actual destination lists after every visibility change. Hiding a category should mark all expanded children hidden and remove them from All, not only remove the category label. Unhiding must restore saved channel order. Counts may represent imported items rather than currently visible rows.
 - Force-stop/relaunch and inspect both category order and channel order for persistence. A fresh emulator data directory does not prove migration retention even when `adb install -r` succeeds.
+
+## LibVLC release runtime
+- Check `adb shell getprop ro.product.cpu.abilist` before selecting an ABI-specific APK. An x86 TV AVD cannot validate the x86_64 artifact; obtain approval for the matching release and report the actual ABI.
+- Debug and release signing may differ. Before uninstalling after `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, back up disposable test data where possible and record that clean re-import does not test upgrade retention.
+- Include GSM-throttled CH+ and rapid CH+/CH-/CH+ in lifecycle tests. Check D-pad responsiveness during stalled playback, restore full network speed, and bound recovery waiting. Capture system logcat as well as app PID logs: ANR diagnosis may require `dumpsys activity exit-info` and `/data/anr` traces.
+- Verify three player exits/reentries reach visible video. Distinguish transient black frames during loading/seeking from a persistent detached surface, and report both. A short loop does not establish absence of leaks.
+- LibVLC emulator logs may include EGL/window/codec errors even when video recovers. Preserve exact messages and their transition timestamps rather than calling the log clean; normal `SurfaceUtils` connect/disconnect messages alone are not a crash.
+- For optional audio capture, install PulseAudio utilities, identify the actual server socket with `pactl info`, and capture its sink monitor. Establish active signal before mute and compare silence/recovery after it. Nonzero or near-silent inconclusive samples do not prove mute; visible video never proves audible output.
