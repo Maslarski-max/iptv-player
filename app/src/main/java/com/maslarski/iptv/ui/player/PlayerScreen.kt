@@ -260,7 +260,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
         }
 
         AnimatedVisibility(
-            visible = controlsVisible,
+            visible = controlsVisible && panel == Panel.NONE,
             enter = fadeIn() + slideInVertically { it / 3 },
             exit = fadeOut() + slideOutVertically { it / 3 },
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -280,7 +280,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             )
         }
 
-        AnimatedVisibility(visible = controlsVisible || bannerVisible, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopStart)) {
+        AnimatedVisibility(visible = (controlsVisible || bannerVisible) && panel == Panel.NONE, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopStart)) {
             Column(Modifier.fillMaxWidth().background(Palette.HeroTopScrim).padding(32.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (state.channelNumber != null) {
