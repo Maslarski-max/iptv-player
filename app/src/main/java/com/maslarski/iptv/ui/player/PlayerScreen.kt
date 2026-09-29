@@ -14,8 +14,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -206,15 +205,20 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 if (panel == Panel.NONE && controlsVisible && event.key in DPAD_KEYS) poke()
                 handled
             }
-            // Touch (phones / Play testers): a tap on the bare video reveals the controls and, on live, the guide;
-            // a tap while the OSD is showing hides it. Keys never reach this path, so D-pad behaviour is unchanged.
-            .pointerInput(Unit) {
-                detectTapGestures {
-                    when {
-                        panel != Panel.NONE -> Unit
-                        controlsVisible -> if (!latestState.isPaused) controlsVisible = false
-                        else -> { poke(); if (latestState.isLive) panel = Panel.GUIDE }
-                    }
+            // Touch (phones / Play testers): a tap on bare live video opens the guide (like D-pad Left), on VOD the
+            // controls; a long-press always opens the controls; a tap while the OSD is showing hides it.
+            // `combinedClickable` keeps the accessibility click/long-click actions; key-driven clicks never reach
+            // here because Center/Enter are swallowed above on bare video.
+            .combinedClickable(
+                interactionSource = null,
+                indication = null,
+                onLongClick = { if (panel == Panel.NONE) poke() },
+            ) {
+                when {
+                    panel != Panel.NONE -> Unit
+                    controlsVisible -> if (!latestState.isPaused) controlsVisible = false
+                    latestState.isLive -> panel = Panel.GUIDE
+                    else -> poke()
                 }
             },
     ) {
