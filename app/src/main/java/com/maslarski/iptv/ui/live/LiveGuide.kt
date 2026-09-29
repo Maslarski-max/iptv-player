@@ -7,6 +7,7 @@ import com.maslarski.iptv.ui.components.dpadLongPress
 import com.maslarski.iptv.ui.components.rememberDpadLongPressState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -106,35 +107,42 @@ fun LiveGuideColumns(
         ?: channels.firstOrNull()
     val panelBg = if (translucent) Color.White.copy(alpha = 0.06f) else Palette.Surface
 
-    Row(modifier.fillMaxSize()) {
-        Column(Modifier.width(232.dp).fillMaxHeight().padding(start = 24.dp, end = 12.dp, top = 24.dp)) {
-            header?.invoke()
-            Text(stringResource(R.string.categories_title), style = MaterialTheme.typography.labelMedium, color = Palette.Muted, modifier = Modifier.padding(bottom = 12.dp))
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 32.dp)) {
-                item { Pill(allLabel, selectedCategoryId == null, Modifier.fillMaxWidth()) { onSelectCategory(null) } }
-                items(categories, key = { it.id }) { c ->
-                    Pill("${c.name}  ·  ${c.itemCount}", c.id == selectedCategoryId, Modifier.fillMaxWidth(), locked = c.id in lockedCategoryIds) { onSelectCategory(c.id) }
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        // Narrow (phone) windows: drop the EPG column and slim the categories so the channel list keeps room.
+        val compact = maxWidth < 720.dp
+        val categoryWidth = if (compact) (maxWidth * 0.38f).coerceAtMost(232.dp) else 232.dp
+        Row(Modifier.fillMaxSize()) {
+            Column(Modifier.width(categoryWidth).fillMaxHeight().padding(start = if (compact) 12.dp else 24.dp, end = 12.dp, top = 24.dp)) {
+                header?.invoke()
+                Text(stringResource(R.string.categories_title), style = MaterialTheme.typography.labelMedium, color = Palette.Muted, modifier = Modifier.padding(bottom = 12.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(bottom = 32.dp)) {
+                    item { Pill(allLabel, selectedCategoryId == null, Modifier.fillMaxWidth()) { onSelectCategory(null) } }
+                    items(categories, key = { it.id }) { c ->
+                        Pill("${c.name}  ·  ${c.itemCount}", c.id == selectedCategoryId, Modifier.fillMaxWidth(), locked = c.id in lockedCategoryIds) { onSelectCategory(c.id) }
+                    }
                 }
             }
-        }
 
-        ChannelColumn(
-            channels = channels,
-            nowPlaying = nowPlaying,
-            currentChannelId = currentChannelId,
-            focusCurrentOnShow = focusCurrentOnShow,
-            onFocus = { focusedChannel = it },
-            onPlay = onPlay,
-            onToggleFavorite = onToggleFavorite,
-            modifier = Modifier.weight(1f).fillMaxHeight().padding(top = 24.dp, end = 12.dp),
-        )
+            ChannelColumn(
+                channels = channels,
+                nowPlaying = nowPlaying,
+                currentChannelId = currentChannelId,
+                focusCurrentOnShow = focusCurrentOnShow,
+                onFocus = { focusedChannel = it },
+                onPlay = onPlay,
+                onToggleFavorite = onToggleFavorite,
+                modifier = Modifier.weight(1f).fillMaxHeight().padding(top = 24.dp, end = 12.dp),
+            )
 
-        Column(
-            Modifier.width(340.dp).fillMaxHeight().padding(top = 24.dp, end = 24.dp, bottom = 24.dp)
-                .clip(RoundedCornerShape(16.dp)).background(panelBg).padding(16.dp),
-        ) {
-            if (shown != null) {
-                EpgColumn(shown, programsFor, reminders, onPlay, onProgramClick)
+            if (!compact) {
+                Column(
+                    Modifier.width(340.dp).fillMaxHeight().padding(top = 24.dp, end = 24.dp, bottom = 24.dp)
+                        .clip(RoundedCornerShape(16.dp)).background(panelBg).padding(16.dp),
+                ) {
+                    if (shown != null) {
+                        EpgColumn(shown, programsFor, reminders, onPlay, onProgramClick)
+                    }
+                }
             }
         }
     }
