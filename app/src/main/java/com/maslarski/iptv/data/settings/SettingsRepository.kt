@@ -10,9 +10,15 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -107,6 +113,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
 
     suspend fun current(): AppSettings = settings.first()
+
+    /** Latest loaded settings, or `null` until the DataStore has emitted once; never blocks. */
+    val snapshot: StateFlow<AppSettings?> =
+        settings.stateIn(CoroutineScope(SupervisorJob() + Dispatchers.IO), SharingStarted.Eagerly, null)
 
     suspend fun setLanguage(tag: String) = context.settingsStore.edit { it[Keys.LANGUAGE] = tag }
     suspend fun setRefreshMode(mode: RefreshMode) = context.settingsStore.edit { it[Keys.REFRESH_MODE] = mode.name }

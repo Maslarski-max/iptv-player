@@ -25,6 +25,7 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.navigation.toRoute
 import com.maslarski.iptv.data.repository.ContentRepository
 import com.maslarski.iptv.data.repository.PlaylistRepository
+import com.maslarski.iptv.data.settings.AppSettings
 import com.maslarski.iptv.data.settings.AspectRatioMode
 import com.maslarski.iptv.data.settings.LastChannel
 import com.maslarski.iptv.data.settings.SettingsRepository
@@ -57,7 +58,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import java.util.Locale
 import javax.inject.Inject
@@ -130,7 +130,7 @@ class PlayerViewModel @Inject constructor(
         // Keep one MediaCodec + Surface alive across TS/HLS format or resolution changes: codec reuse is
         // on, generous joining time lets the renderer adapt in place instead of re-initialising, and
         // Surface.setFrameRate is never called so the display/surface is not reset mid-stream.
-        DecoderEngineRenderersFactory(context, runBlocking { settings.current() }.let { DecoderPreferences(it.videoDecoder, it.audioDecoder) })
+        DecoderEngineRenderersFactory(context, (settings.snapshot.value ?: AppSettings()).let { DecoderPreferences(it.videoDecoder, it.audioDecoder) })
             .setEnableDecoderFallback(true)
             .setAllowedVideoJoiningTimeMs(VIDEO_JOINING_TIME_MS),
     )
