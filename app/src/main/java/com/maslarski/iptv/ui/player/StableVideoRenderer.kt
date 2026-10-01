@@ -2,6 +2,7 @@ package com.maslarski.iptv.ui.player
 
 import android.content.Context
 import android.os.Handler
+import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.mediacodec.MediaCodecAdapter
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
@@ -18,6 +19,7 @@ import androidx.media3.exoplayer.video.VideoRendererEventListener
  *    than treated as a stream discontinuity.
  */
 @UnstableApi
+@androidx.annotation.OptIn(ExperimentalApi::class)
 class StableVideoRenderer(
     context: Context,
     codecAdapterFactory: MediaCodecAdapter.Factory,
