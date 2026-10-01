@@ -11,10 +11,10 @@ import androidx.media3.exoplayer.video.VideoRendererEventListener
 
 /**
  * [MediaCodecVideoRenderer] tuned for live IPTV on weak TV chipsets:
- *  - the decoder is flushed, never re-created, on position/stream resets and surface changes, so the
- *    MediaCodec + Surface pair survives channel/segment switches (no "SurfaceUtils: disconnecting from surface");
- *  - a frame that is late by more than [DROP_LATE_FRAME_US] is dropped on its own instead of waiting for it,
- *    and the renderer never jumps to the next keyframe (which would blank the picture);
+ *  - the decoder is flushed, never re-created, on position/stream resets, so the MediaCodec + Surface pair
+ *    survives channel/segment switches (no "SurfaceUtils: disconnecting from surface");
+ *  - a frame that is late by more than [DROP_LATE_FRAME_US] is dropped on its own instead of waiting for it
+ *    (Media3's keyframe catch-up for playback that falls far behind is kept);
  *  - jittery / non-advancing timestamps from TS muxers are tolerated by the frame release control rather
  *    than treated as a stream discontinuity.
  */
@@ -38,12 +38,8 @@ class StableVideoRenderer(
 
     override fun shouldReinitCodec(): Boolean = false
 
-    override fun codecNeedsSetOutputSurfaceWorkaround(name: String): Boolean = false
-
     override fun shouldDropOutputBuffer(earlyUs: Long, elapsedRealtimeUs: Long, isLastBuffer: Boolean): Boolean =
         earlyUs < -DROP_LATE_FRAME_US && !isLastBuffer
-
-    override fun shouldDropBuffersToKeyframe(earlyUs: Long, elapsedRealtimeUs: Long, isLastBuffer: Boolean): Boolean = false
 
     override fun shouldSkipBuffersWithIdenticalReleaseTime(): Boolean = false
 
