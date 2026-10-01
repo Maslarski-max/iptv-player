@@ -9,6 +9,7 @@ import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecInfo
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.exoplayer.video.MediaCodecVideoRenderer
 import androidx.media3.exoplayer.video.VideoRendererEventListener
 import com.maslarski.iptv.data.settings.DecoderMode
 
@@ -39,16 +40,29 @@ class DecoderEngineRenderersFactory(context: Context, private val prefs: Decoder
         eventListener: VideoRendererEventListener,
         allowedVideoJoiningTimeMs: Long,
         out: ArrayList<Renderer>,
-    ) = super.buildVideoRenderers(
-        context,
-        if (prefs.video == DecoderMode.SOFTWARE) extensionRendererMode else EXTENSION_RENDERER_MODE_OFF,
-        selectorFor(prefs.video),
-        enableDecoderFallback,
-        eventHandler,
-        eventListener,
-        allowedVideoJoiningTimeMs,
-        out,
-    )
+    ) {
+        val selector = selectorFor(prefs.video)
+        val built = ArrayList<Renderer>()
+        super.buildVideoRenderers(
+            context,
+            if (prefs.video == DecoderMode.SOFTWARE) extensionRendererMode else EXTENSION_RENDERER_MODE_OFF,
+            selector,
+            enableDecoderFallback,
+            eventHandler,
+            eventListener,
+            allowedVideoJoiningTimeMs,
+            built,
+        )
+        // Swap the stock MediaCodec video renderer for the stability-tuned one; extension renderers are kept as built.
+        built.mapTo(out) { renderer ->
+            if (renderer is MediaCodecVideoRenderer) {
+                StableVideoRenderer(
+                    context, codecAdapterFactory, selector, allowedVideoJoiningTimeMs, enableDecoderFallback,
+                    eventHandler, eventListener, MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY,
+                )
+            } else renderer
+        }
+    }
 
     override fun buildAudioRenderers(
         context: Context,
