@@ -174,8 +174,6 @@
     <string name="series_episode_label">%1$d. %2$s</string>
     <string name="settings_playback">Oynatma</string>
     <string name="settings_playlists">Oynatma listeleri</string>
-    <string name="settings_hw_accel">Donanım hızlandırma</string>
-    <string name="settings_hw_accel_body">Mümkün olduğunda donanım video kod çözücülerini kullan</string>
     <string name="settings_auto_update_body">Uygulama açılırken oynatma listelerini ve EPG’yi yenile</string>
     <string name="settings_locked_categories">Kilitli kategoriler</string>
     <string name="settings_metadata">Görseller ve meta veriler (TMDB)</string>
@@ -259,4 +257,10 @@
     <string name="manage_show">Göster</string>
     <string name="manage_items">%1$d öğe</string>
     <string name="manage_no_playlist">Kategorilerini yönetmek için önce bir oynatma listesi ekleyin.</string>
+    <string name="settings_decoder_engine">Oynatma Kod Çözücü Motoru</string>
+    <string name="settings_decoder_engine_body">Yayınların nasıl çözüleceğini seçin. Yazılımla kod çözme daha yavaştır ancak bazı TV kutularındaki donanım kod çözücü hatalarını önler.</string>
+    <string name="settings_video_decoder">Video kod çözücü</string>
+    <string name="settings_audio_decoder">Ses kod çözücü</string>
+    <string name="settings_decoder_hardware">Donanım Hızlandırmalı (Varsayılan)</string>
+    <string name="settings_decoder_software">Yazılımla Kod Çözme</string>
 </resources>

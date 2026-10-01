@@ -174,8 +174,6 @@
     <string name="series_episode_label">%1$d. %2$s</string>
     <string name="settings_playback">التشغيل</string>
     <string name="settings_playlists">قوائم التشغيل</string>
-    <string name="settings_hw_accel">تسريع العتاد</string>
-    <string name="settings_hw_accel_body">استخدام مفكّكات الفيديو العتادية عند توفرها</string>
     <string name="settings_auto_update_body">تحديث قوائم التشغيل والـ EPG عند بدء التطبيق</string>
     <string name="settings_locked_categories">التصنيفات المقفلة</string>
     <string name="settings_metadata">الصور والبيانات الوصفية (TMDB)</string>
@@ -263,4 +261,10 @@
     <string name="manage_show">إظهار</string>
     <string name="manage_items">%1$d عنصر</string>
     <string name="manage_no_playlist">أضف قائمة تشغيل أولاً لإدارة فئاتها.</string>
+    <string name="settings_decoder_engine">محرك فك تشفير التشغيل</string>
+    <string name="settings_decoder_engine_body">اختر كيفية فك تشفير البث. فك التشفير البرمجي أبطأ لكنه يتجنب أعطال فك التشفير العتادي على بعض أجهزة التلفاز.</string>
+    <string name="settings_video_decoder">مفكّك الفيديو</string>
+    <string name="settings_audio_decoder">مفكّك الصوت</string>
+    <string name="settings_decoder_hardware">تسريع عتادي (افتراضي)</string>
+    <string name="settings_decoder_software">فك تشفير برمجي</string>
 </resources>

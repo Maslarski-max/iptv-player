@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -267,7 +270,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             visible = controlsVisible && panel == Panel.NONE,
             enter = fadeIn() + slideInVertically { it / 3 },
             exit = fadeOut() + slideOutVertically { it / 3 },
-            modifier = Modifier.align(Alignment.BottomCenter),
+            modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing),
         ) {
             Controls(
                 state = state,
@@ -284,7 +287,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             )
         }
 
-        AnimatedVisibility(visible = (controlsVisible || bannerVisible) && panel == Panel.NONE, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopStart)) {
+        AnimatedVisibility(visible = (controlsVisible || bannerVisible) && panel == Panel.NONE, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing)) {
             Column(Modifier.fillMaxWidth().background(Palette.HeroTopScrim).padding(32.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (state.channelNumber != null) {
@@ -510,7 +513,7 @@ private fun LiveGuideOverlay(
     onToggleFavorite: (Channel) -> Unit,
     onProgramClick: (Channel, EpgProgram) -> Unit,
 ) {
-    Box(Modifier.fillMaxSize().background(Palette.Background.copy(alpha = 0.82f))) {
+    Box(Modifier.fillMaxSize().background(Palette.Background.copy(alpha = 0.82f)).windowInsetsPadding(WindowInsets.safeDrawing)) {
         LiveGuideColumns(
             categories = guide.categories,
             selectedCategoryId = guide.selectedCategoryId,
@@ -553,7 +556,7 @@ private fun SettingsPanel(
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
         Column(
-            Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(380.dp)
+            Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(380.dp).windowInsetsPadding(WindowInsets.safeDrawing)
                 .background(Brush.horizontalGradient(listOf(Color.Transparent, Palette.Background.copy(alpha = 0.72f), Palette.Background.copy(alpha = 0.92f))))
                 .padding(start = 40.dp, end = 24.dp, top = 28.dp, bottom = 28.dp)
                 .verticalScroll(rememberScrollState())
@@ -620,7 +623,7 @@ private fun TrackPanel(
     LaunchedEffect(Unit) { first.requestFocus() }
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)).clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
         Column(
-            Modifier.align(Alignment.CenterEnd).widthIn(min = 280.dp, max = 400.dp).padding(24.dp)
+            Modifier.align(Alignment.CenterEnd).widthIn(min = 280.dp, max = 400.dp).windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp)
                 .clip(RoundedCornerShape(20.dp)).background(Palette.SurfaceElevated.copy(alpha = 0.9f)).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
