@@ -10,14 +10,23 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private val Context.settingsStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+/** Which MediaCodec decoders the player prefers for a track type. */
+enum class DecoderMode { HARDWARE, SOFTWARE }
 
 enum class AspectRatioMode { FIT, RATIO_16_9, RATIO_4_3, ZOOM, STRETCH }
 
@@ -34,7 +43,8 @@ data class AppSettings(
     val languageTag: String = "",
     val parentalPinHash: String? = null,
     val refreshMode: RefreshMode = RefreshMode.ON_LAUNCH,
-    val hardwareAcceleration: Boolean = true,
+    val videoDecoder: DecoderMode = DecoderMode.HARDWARE,
+    val audioDecoder: DecoderMode = DecoderMode.HARDWARE,
     val aspectRatio: AspectRatioMode = AspectRatioMode.FIT,
     val epgRetentionDays: Int = 7,
     val tmdbApiKey: String = "",
@@ -60,6 +70,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val PIN_HASH = stringPreferencesKey("pin_hash")
         val REFRESH_MODE = stringPreferencesKey("refresh_mode")
         val HW_ACCEL = booleanPreferencesKey("hw_accel")
+        val VIDEO_DECODER = stringPreferencesKey("video_decoder")
+        val AUDIO_DECODER = stringPreferencesKey("audio_decoder")
         val ASPECT = stringPreferencesKey("aspect")
         val EPG_DAYS = intPreferencesKey("epg_days")
         val TMDB_KEY = stringPreferencesKey("tmdb_api_key")
@@ -82,7 +94,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             languageTag = p[Keys.LANGUAGE] ?: "",
             parentalPinHash = p[Keys.PIN_HASH],
             refreshMode = p[Keys.REFRESH_MODE]?.let { runCatching { RefreshMode.valueOf(it) }.getOrNull() } ?: RefreshMode.ON_LAUNCH,
-            hardwareAcceleration = p[Keys.HW_ACCEL] ?: true,
+            videoDecoder = p[Keys.VIDEO_DECODER]?.let { runCatching { DecoderMode.valueOf(it) }.getOrNull() }
+                ?: if (p[Keys.HW_ACCEL] == false) DecoderMode.SOFTWARE else DecoderMode.HARDWARE,
+            audioDecoder = p[Keys.AUDIO_DECODER]?.let { runCatching { DecoderMode.valueOf(it) }.getOrNull() } ?: DecoderMode.HARDWARE,
             aspectRatio = p[Keys.ASPECT]?.let { runCatching { AspectRatioMode.valueOf(it) }.getOrNull() } ?: AspectRatioMode.FIT,
             epgRetentionDays = p[Keys.EPG_DAYS] ?: 7,
             tmdbApiKey = p[Keys.TMDB_KEY] ?: "",
@@ -100,9 +114,14 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     suspend fun current(): AppSettings = settings.first()
 
+    /** Latest loaded settings, or `null` until the DataStore has emitted once; never blocks. */
+    val snapshot: StateFlow<AppSettings?> =
+        settings.stateIn(CoroutineScope(SupervisorJob() + Dispatchers.IO), SharingStarted.Eagerly, null)
+
     suspend fun setLanguage(tag: String) = context.settingsStore.edit { it[Keys.LANGUAGE] = tag }
     suspend fun setRefreshMode(mode: RefreshMode) = context.settingsStore.edit { it[Keys.REFRESH_MODE] = mode.name }
-    suspend fun setHardwareAcceleration(enabled: Boolean) = context.settingsStore.edit { it[Keys.HW_ACCEL] = enabled }
+    suspend fun setVideoDecoder(mode: DecoderMode) = context.settingsStore.edit { it[Keys.VIDEO_DECODER] = mode.name }
+    suspend fun setAudioDecoder(mode: DecoderMode) = context.settingsStore.edit { it[Keys.AUDIO_DECODER] = mode.name }
     suspend fun setAspectRatio(mode: AspectRatioMode) = context.settingsStore.edit { it[Keys.ASPECT] = mode.name }
     suspend fun setEpgRetentionDays(days: Int) = context.settingsStore.edit { it[Keys.EPG_DAYS] = days }
     suspend fun setTmdbApiKey(key: String) = context.settingsStore.edit { it[Keys.TMDB_KEY] = key.trim() }

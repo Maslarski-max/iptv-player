@@ -174,8 +174,6 @@
     <string name="series_episode_label">%1$d. %2$s</string>
     <string name="settings_playback">Wiedergabe</string>
     <string name="settings_playlists">Playlists</string>
-    <string name="settings_hw_accel">Hardwarebeschleunigung</string>
-    <string name="settings_hw_accel_body">Hardware-Videodecoder verwenden, wenn verfügbar</string>
     <string name="settings_auto_update_body">Playlists und EPG beim App-Start aktualisieren</string>
     <string name="settings_locked_categories">Gesperrte Kategorien</string>
     <string name="settings_metadata">Artwork &amp; Metadaten (TMDB)</string>
@@ -259,4 +257,10 @@
     <string name="manage_show">Einblenden</string>
     <string name="manage_items">%1$d Einträge</string>
     <string name="manage_no_playlist">Fügen Sie zuerst eine Playlist hinzu, um ihre Kategorien zu verwalten.</string>
+    <string name="settings_decoder_engine">Wiedergabe-Decoder</string>
+    <string name="settings_decoder_engine_body">Legt fest, wie Streams dekodiert werden. Software-Dekodierung ist langsamer, vermeidet aber Fehler des Hardware-Decoders auf manchen TV-Boxen.</string>
+    <string name="settings_video_decoder">Video-Decoder</string>
+    <string name="settings_audio_decoder">Audio-Decoder</string>
+    <string name="settings_decoder_hardware">Hardwarebeschleunigt (Standard)</string>
+    <string name="settings_decoder_software">Software-Dekodierung</string>
 </resources>

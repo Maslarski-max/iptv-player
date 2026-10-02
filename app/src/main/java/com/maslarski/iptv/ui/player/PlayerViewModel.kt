@@ -19,13 +19,13 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import io.sentry.okhttp.SentryOkHttpInterceptor
 import java.util.concurrent.TimeUnit
-import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.navigation.toRoute
 import com.maslarski.iptv.data.repository.ContentRepository
 import com.maslarski.iptv.data.repository.PlaylistRepository
+import com.maslarski.iptv.data.settings.AppSettings
 import com.maslarski.iptv.data.settings.AspectRatioMode
 import com.maslarski.iptv.data.settings.LastChannel
 import com.maslarski.iptv.data.settings.SettingsRepository
@@ -130,10 +130,9 @@ class PlayerViewModel @Inject constructor(
         // Keep one MediaCodec + Surface alive across TS/HLS format or resolution changes: codec reuse is
         // on, generous joining time lets the renderer adapt in place instead of re-initialising, and
         // Surface.setFrameRate is never called so the display/surface is not reset mid-stream.
-        DefaultRenderersFactory(context)
+        DecoderEngineRenderersFactory(context, (settings.snapshot.value ?: AppSettings()).let { DecoderPreferences(it.videoDecoder, it.audioDecoder) })
             .setEnableDecoderFallback(true)
-            .setAllowedVideoJoiningTimeMs(VIDEO_JOINING_TIME_MS)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF),
+            .setAllowedVideoJoiningTimeMs(VIDEO_JOINING_TIME_MS),
     )
         .setTrackSelector(trackSelector)
         .setVideoChangeFrameRateStrategy(C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF)

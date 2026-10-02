@@ -174,8 +174,6 @@
     <string name="series_episode_label">%1$d. %2$s</string>
     <string name="settings_playback">Reprodukcija</string>
     <string name="settings_playlists">Plejliste</string>
-    <string name="settings_hw_accel">Hardversko ubrzanje</string>
-    <string name="settings_hw_accel_body">Koristi hardverske video dekodere kada su dostupni</string>
     <string name="settings_auto_update_body">Osveži plejliste i EPG pri pokretanju aplikacije</string>
     <string name="settings_locked_categories">Zaključane kategorije</string>
     <string name="settings_metadata">Slike i metapodaci (TMDB)</string>
@@ -260,4 +258,10 @@
     <string name="manage_show">Prikaži</string>
     <string name="manage_items">%1$d stavki</string>
     <string name="manage_no_playlist">Prvo dodajte listu da biste upravljali njenim kategorijama.</string>
+    <string name="settings_decoder_engine">Dekoder reprodukcije</string>
+    <string name="settings_decoder_engine_body">Odaberite kako se streamovi dekodiraju. Softversko dekodiranje je sporije, ali izbjegava greške hardverskog dekodera na nekim TV uređajima.</string>
+    <string name="settings_video_decoder">Video dekoder</string>
+    <string name="settings_audio_decoder">Audio dekoder</string>
+    <string name="settings_decoder_hardware">Hardversko ubrzanje (zadano)</string>
+    <string name="settings_decoder_software">Softversko dekodiranje</string>
 </resources>

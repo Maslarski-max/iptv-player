@@ -174,8 +174,6 @@
     <string name="series_episode_label">%1$d. %2$s</string>
     <string name="settings_playback">Репродукција</string>
     <string name="settings_playlists">Плејлисти</string>
-    <string name="settings_hw_accel">Хардверско забрзување</string>
-    <string name="settings_hw_accel_body">Користи хардверски видео декодери кога се достапни</string>
     <string name="settings_auto_update_body">Освежи плејлисти и EPG при стартување на апликацијата</string>
     <string name="settings_locked_categories">Заклучени категории</string>
     <string name="settings_metadata">Слики и метаподатоци (TMDB)</string>
@@ -259,4 +257,10 @@
     <string name="manage_show">Прикажи</string>
     <string name="manage_items">%1$d ставки</string>
     <string name="manage_no_playlist">Прво додадете плејлиста за да управувате со нејзините категории.</string>
+    <string name="settings_decoder_engine">Декодер за репродукција</string>
+    <string name="settings_decoder_engine_body">Изберете како се декодираат стримовите. Софтверското декодирање е побавно, но ги избегнува грешките на хардверскиот декодер кај некои ТВ-кутии.</string>
+    <string name="settings_video_decoder">Видео декодер</string>
+    <string name="settings_audio_decoder">Аудио декодер</string>
+    <string name="settings_decoder_hardware">Хардверско забрзување (стандардно)</string>
+    <string name="settings_decoder_software">Софтверско декодирање</string>
 </resources>

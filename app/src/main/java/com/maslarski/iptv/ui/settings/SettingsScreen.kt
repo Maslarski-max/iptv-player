@@ -59,6 +59,7 @@ import com.maslarski.iptv.data.repository.ContentRepository
 import com.maslarski.iptv.data.repository.PlaylistRepository
 import com.maslarski.iptv.data.settings.AppSettings
 import com.maslarski.iptv.data.settings.AspectRatioMode
+import com.maslarski.iptv.data.settings.DecoderMode
 import com.maslarski.iptv.data.settings.RefreshMode
 import com.maslarski.iptv.data.settings.SettingsRepository
 import com.maslarski.iptv.data.sync.PlaylistSyncer
@@ -160,7 +161,8 @@ class SettingsViewModel @Inject constructor(
     fun refresh(playlist: Playlist) = viewModelScope.launch { syncer.sync(playlist) }
     fun activatePlaylist(id: Long) = viewModelScope.launch { playlists.setActive(id) }
     fun deletePlaylist(id: Long) = viewModelScope.launch { playlists.delete(id) }
-    fun setHardwareAcceleration(v: Boolean) = viewModelScope.launch { settingsRepo.setHardwareAcceleration(v) }
+    fun setVideoDecoder(mode: DecoderMode) = viewModelScope.launch { settingsRepo.setVideoDecoder(mode) }
+    fun setAudioDecoder(mode: DecoderMode) = viewModelScope.launch { settingsRepo.setAudioDecoder(mode) }
     fun setAspect(mode: AspectRatioMode) = viewModelScope.launch { settingsRepo.setAspectRatio(mode) }
     fun setPin(pin: String) = viewModelScope.launch { settingsRepo.setPin(pin) }
     fun setTmdbApiKey(key: String) = viewModelScope.launch { settingsRepo.setTmdbApiKey(key) }
@@ -258,8 +260,17 @@ fun SettingsScreen(
             Spacer(Modifier.height(12.dp))
         }
         item {
-            ToggleRow(stringResource(R.string.settings_hw_accel), stringResource(R.string.settings_hw_accel_body), state.settings.hardwareAcceleration, viewModel::setHardwareAcceleration)
             ToggleRow(stringResource(R.string.settings_launch_last), stringResource(R.string.settings_launch_last_body), state.settings.launchLastChannel, viewModel::setLaunchLastChannel)
+            Spacer(Modifier.height(28.dp))
+        }
+
+        item { SectionHeader(stringResource(R.string.settings_decoder_engine)); Spacer(Modifier.height(8.dp)) }
+        item {
+            Text(stringResource(R.string.settings_decoder_engine_body), style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
+            Spacer(Modifier.height(12.dp))
+            DecoderPicker(stringResource(R.string.settings_video_decoder), state.settings.videoDecoder, viewModel::setVideoDecoder)
+            Spacer(Modifier.height(12.dp))
+            DecoderPicker(stringResource(R.string.settings_audio_decoder), state.settings.audioDecoder, viewModel::setAudioDecoder)
             Spacer(Modifier.height(28.dp))
         }
 
@@ -449,6 +460,22 @@ private fun ActionRow(title: String, body: String, icon: ImageVector, onClick: (
         }
         Spacer(Modifier.width(16.dp))
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Palette.Muted)
+    }
+}
+
+@Composable
+private fun DecoderPicker(title: String, selected: DecoderMode, onSelect: (DecoderMode) -> Unit) {
+    Text(title, style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+    Spacer(Modifier.height(8.dp))
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(DecoderMode.entries.size) { i ->
+            val mode = DecoderMode.entries[i]
+            val label = when (mode) {
+                DecoderMode.HARDWARE -> R.string.settings_decoder_hardware
+                DecoderMode.SOFTWARE -> R.string.settings_decoder_software
+            }
+            Pill(stringResource(label), selected == mode) { onSelect(mode) }
+        }
     }
 }
 

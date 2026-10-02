@@ -174,8 +174,6 @@
     <string name="series_episode_label">%1$d. %2$s</string>
     <string name="settings_playback">Reproducción</string>
     <string name="settings_playlists">Listas</string>
-    <string name="settings_hw_accel">Aceleración por hardware</string>
-    <string name="settings_hw_accel_body">Usar decodificadores de vídeo por hardware cuando estén disponibles</string>
     <string name="settings_auto_update_body">Actualizar listas y EPG al iniciar la app</string>
     <string name="settings_locked_categories">Categorías bloqueadas</string>
     <string name="settings_metadata">Carátulas y metadatos (TMDB)</string>
@@ -259,4 +257,10 @@
     <string name="manage_show">Mostrar</string>
     <string name="manage_items">%1$d elementos</string>
     <string name="manage_no_playlist">Añade una lista primero para gestionar sus categorías.</string>
+    <string name="settings_decoder_engine">Motor de decodificación</string>
+    <string name="settings_decoder_engine_body">Elige cómo se decodifican los streams. La decodificación por software es más lenta pero evita fallos del decodificador por hardware en algunos dispositivos de TV.</string>
+    <string name="settings_video_decoder">Decodificador de vídeo</string>
+    <string name="settings_audio_decoder">Decodificador de audio</string>
+    <string name="settings_decoder_hardware">Acelerado por hardware (predeterminado)</string>
+    <string name="settings_decoder_software">Decodificación por software</string>
 </resources>
