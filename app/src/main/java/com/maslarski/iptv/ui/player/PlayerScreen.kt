@@ -113,6 +113,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private enum class Panel { NONE, AUDIO, SUBTITLES, GUIDE, SETTINGS }
+private val AUTO_DISMISS_PANELS = setOf(Panel.SETTINGS, Panel.AUDIO, Panel.SUBTITLES)
 
 private val DPAD_KEYS = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight, Key.DirectionCenter, Key.Enter)
 
@@ -125,6 +126,8 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     var controlsVisible by rememberSaveable { mutableStateOf(false) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var panel by remember { mutableStateOf(Panel.NONE) }
+    var lastPanelInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    fun pokePanel() { lastPanelInteraction = System.currentTimeMillis() }
     val playFocus = remember { FocusRequester() }
     val rootFocus = remember { FocusRequester() }
 
@@ -146,6 +149,13 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     LaunchedEffect(lastInteraction, panel, controlsVisible) {
         if (panel != Panel.NONE || !controlsVisible) return@LaunchedEffect
         delay(OSD_TIMEOUT_MS)
+        if (!latestState.isPaused) controlsVisible = false
+    }
+    // Settings / track panels auto-dismiss after the same inactivity window; D-pad keys restart it.
+    LaunchedEffect(panel, lastPanelInteraction) {
+        if (panel !in AUTO_DISMISS_PANELS) return@LaunchedEffect
+        delay(OSD_TIMEOUT_MS)
+        panel = Panel.NONE
         if (!latestState.isPaused) controlsVisible = false
     }
     LaunchedEffect(controlsVisible, panel) {
@@ -206,6 +216,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 }
                 // Only D-pad keys restart the countdown, and only while the OSD is already visible; nothing reveals it implicitly.
                 if (panel == Panel.NONE && controlsVisible && event.key in DPAD_KEYS) poke()
+                if (panel in AUTO_DISMISS_PANELS && event.key in DPAD_KEYS) pokePanel()
                 handled
             }
             // Touch (phones / Play testers): a tap on bare live video opens the guide (like D-pad Left), on VOD the
@@ -343,7 +354,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 state = state,
                 onAudio = { panel = Panel.AUDIO },
                 onSubtitles = { panel = Panel.SUBTITLES },
-                onAspect = { viewModel.setAspect(it) },
+                onAspect = { viewModel.setAspect(it); pokePanel() },
                 onDismiss = { panel = Panel.NONE },
             )
         }
@@ -355,7 +366,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 offSelected = panel == Panel.SUBTITLES && !state.subtitlesEnabled,
                 onSelect = { viewModel.selectTrack(it); panel = Panel.NONE },
                 onOff = { viewModel.disableSubtitles(); panel = Panel.NONE },
-                onLoadExternal = if (panel == Panel.SUBTITLES && !state.isLive) ({ subtitlePicker.launch(arrayOf("*/*")) }) else null,
+                onLoadExternal = if (panel == Panel.SUBTITLES && !state.isLive) ({ pokePanel(); subtitlePicker.launch(arrayOf("*/*")) }) else null,
                 onDismiss = { panel = Panel.NONE },
             )
         }
