@@ -263,4 +263,9 @@
     <string name="settings_audio_decoder">Decodificador de audio</string>
     <string name="settings_decoder_hardware">Acelerado por hardware (predeterminado)</string>
     <string name="settings_decoder_software">Decodificación por software</string>
+    <string name="settings_buffer_profile">Perfil de tamaño de búfer</string>
+    <string name="settings_buffer_profile_body">Cuánto vídeo se mantiene en búfer. Pequeño cambia de canal más rápido; Grande tolera conexiones malas. Se aplica al abrir el reproductor de nuevo.</string>
+    <string name="settings_buffer_small">Pequeño (zapping rápido)</string>
+    <string name="settings_buffer_medium">Medio (equilibrado - predeterminado)</string>
+    <string name="settings_buffer_large">Grande (alta retención / conexiones malas)</string>
 </resources>

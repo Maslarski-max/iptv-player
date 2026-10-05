@@ -263,4 +263,9 @@
     <string name="settings_audio_decoder">Audio-Decoder</string>
     <string name="settings_decoder_hardware">Hardwarebeschleunigt (Standard)</string>
     <string name="settings_decoder_software">Software-Dekodierung</string>
+    <string name="settings_buffer_profile">Puffergrößen-Profil</string>
+    <string name="settings_buffer_profile_body">Wie viel Video gepuffert wird. Klein zappt am schnellsten; Groß überbrückt schlechte Verbindungen. Gilt beim nächsten Öffnen des Players.</string>
+    <string name="settings_buffer_small">Klein (schnelles Zappen)</string>
+    <string name="settings_buffer_medium">Mittel (ausgewogen - Standard)</string>
+    <string name="settings_buffer_large">Groß (hohe Reserve / schlechte Verbindungen)</string>
 </resources>

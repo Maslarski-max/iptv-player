@@ -23,6 +23,9 @@ data class BufferProfile(
     val bufferForPlaybackAfterRebufferMs: Int,
 )
 
+/** The live and VOD thresholds that make up one user-selectable buffer size. */
+data class BufferProfiles(val live: BufferProfile, val vod: BufferProfile)
+
 /**
  * A time-prioritised [LoadControl] whose thresholds switch between a fast-zapping live profile and a
  * high-retention VOD profile on a single [androidx.media3.exoplayer.ExoPlayer]. Select the profile with
@@ -31,16 +34,25 @@ data class BufferProfile(
  * below the minimum duration.
  */
 @UnstableApi
-class ProfileLoadControl(private val live: BufferProfile, private val vod: BufferProfile) : LoadControl {
+class ProfileLoadControl(profiles: BufferProfiles) : LoadControl {
     private val allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
 
     @Volatile
-    private var profile: BufferProfile = live
+    private var profiles: BufferProfiles = profiles
+
+    @Volatile
+    private var isLive = true
+    private val profile: BufferProfile get() = profiles.let { if (isLive) it.live else it.vod }
     private var targetBufferBytes = DefaultLoadControl.DEFAULT_MIN_BUFFER_SIZE
     private var isLoading = false
 
     fun setLive(isLive: Boolean) {
-        profile = if (isLive) live else vod
+        this.isLive = isLive
+    }
+
+    /** Swaps the user-selected size; takes effect on the next loading decision. */
+    fun setProfiles(profiles: BufferProfiles) {
+        this.profiles = profiles
     }
 
     override fun onPrepared(playerId: PlayerId) {

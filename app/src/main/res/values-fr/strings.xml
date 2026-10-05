@@ -263,4 +263,9 @@
     <string name="settings_audio_decoder">Décodeur audio</string>
     <string name="settings_decoder_hardware">Accéléré par le matériel (par défaut)</string>
     <string name="settings_decoder_software">Décodage logiciel</string>
+    <string name="settings_buffer_profile">Profil de taille du tampon</string>
+    <string name="settings_buffer_profile_body">Quantité de vidéo conservée en tampon. Petit zappe le plus vite ; Grand résiste aux mauvaises connexions. Appliqué à la prochaine ouverture du lecteur.</string>
+    <string name="settings_buffer_small">Petit (zapping rapide)</string>
+    <string name="settings_buffer_medium">Moyen (équilibré - par défaut)</string>
+    <string name="settings_buffer_large">Grand (haute rétention / mauvaises connexions)</string>
 </resources>

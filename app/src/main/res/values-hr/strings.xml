@@ -264,4 +264,9 @@
     <string name="settings_audio_decoder">Audio dekoder</string>
     <string name="settings_decoder_hardware">Hardversko ubrzanje (zadano)</string>
     <string name="settings_decoder_software">Softversko dekodiranje</string>
+    <string name="settings_buffer_profile">Profil veličine međuspremnika</string>
+    <string name="settings_buffer_profile_body">Koliko se videa čuva u međuspremniku. Mali najbrže mijenja kanale; Veliki podnosi lošu vezu. Vrijedi pri sljedećem otvaranju playera.</string>
+    <string name="settings_buffer_small">Mali (brzo mijenjanje)</string>
+    <string name="settings_buffer_medium">Srednji (uravnotežen - zadano)</string>
+    <string name="settings_buffer_large">Veliki (visoka zadrška / loša veza)</string>
 </resources>

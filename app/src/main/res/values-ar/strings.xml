@@ -267,4 +267,9 @@
     <string name="settings_audio_decoder">مفكّك الصوت</string>
     <string name="settings_decoder_hardware">تسريع عتادي (افتراضي)</string>
     <string name="settings_decoder_software">فك تشفير برمجي</string>
+    <string name="settings_buffer_profile">ملف حجم التخزين المؤقت</string>
+    <string name="settings_buffer_profile_body">مقدار الفيديو المحفوظ في التخزين المؤقت. صغير يبدّل القنوات أسرع؛ كبير يتحمل الاتصالات الضعيفة. يُطبّق عند فتح المشغّل في المرة التالية.</string>
+    <string name="settings_buffer_small">صغير (تبديل سريع)</string>
+    <string name="settings_buffer_medium">متوسط (متوازن - افتراضي)</string>
+    <string name="settings_buffer_large">كبير (احتفاظ عالٍ / اتصال ضعيف)</string>
 </resources>

@@ -28,6 +28,9 @@ private val Context.settingsStore: DataStore<Preferences> by preferencesDataStor
 /** Which MediaCodec decoders the player prefers for a track type. */
 enum class DecoderMode { HARDWARE, SOFTWARE }
 
+/** How much media the player keeps buffered; see BufferProfiles in the player module. */
+enum class BufferSizeProfile { SMALL, MEDIUM, LARGE }
+
 enum class AspectRatioMode { FIT, RATIO_16_9, RATIO_4_3, ZOOM, STRETCH }
 
 enum class RefreshMode(val periodHours: Long?) {
@@ -45,6 +48,7 @@ data class AppSettings(
     val refreshMode: RefreshMode = RefreshMode.ON_LAUNCH,
     val videoDecoder: DecoderMode = DecoderMode.HARDWARE,
     val audioDecoder: DecoderMode = DecoderMode.HARDWARE,
+    val bufferProfile: BufferSizeProfile = BufferSizeProfile.MEDIUM,
     val aspectRatio: AspectRatioMode = AspectRatioMode.FIT,
     val epgRetentionDays: Int = 7,
     val tmdbApiKey: String = "",
@@ -72,6 +76,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val HW_ACCEL = booleanPreferencesKey("hw_accel")
         val VIDEO_DECODER = stringPreferencesKey("video_decoder")
         val AUDIO_DECODER = stringPreferencesKey("audio_decoder")
+        val BUFFER_PROFILE = stringPreferencesKey("buffer_profile")
         val ASPECT = stringPreferencesKey("aspect")
         val EPG_DAYS = intPreferencesKey("epg_days")
         val TMDB_KEY = stringPreferencesKey("tmdb_api_key")
@@ -97,6 +102,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             videoDecoder = p[Keys.VIDEO_DECODER]?.let { runCatching { DecoderMode.valueOf(it) }.getOrNull() }
                 ?: if (p[Keys.HW_ACCEL] == false) DecoderMode.SOFTWARE else DecoderMode.HARDWARE,
             audioDecoder = p[Keys.AUDIO_DECODER]?.let { runCatching { DecoderMode.valueOf(it) }.getOrNull() } ?: DecoderMode.HARDWARE,
+            bufferProfile = p[Keys.BUFFER_PROFILE]?.let { runCatching { BufferSizeProfile.valueOf(it) }.getOrNull() } ?: BufferSizeProfile.MEDIUM,
             aspectRatio = p[Keys.ASPECT]?.let { runCatching { AspectRatioMode.valueOf(it) }.getOrNull() } ?: AspectRatioMode.FIT,
             epgRetentionDays = p[Keys.EPG_DAYS] ?: 7,
             tmdbApiKey = p[Keys.TMDB_KEY] ?: "",
@@ -122,6 +128,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setRefreshMode(mode: RefreshMode) = context.settingsStore.edit { it[Keys.REFRESH_MODE] = mode.name }
     suspend fun setVideoDecoder(mode: DecoderMode) = context.settingsStore.edit { it[Keys.VIDEO_DECODER] = mode.name }
     suspend fun setAudioDecoder(mode: DecoderMode) = context.settingsStore.edit { it[Keys.AUDIO_DECODER] = mode.name }
+    suspend fun setBufferProfile(profile: BufferSizeProfile) = context.settingsStore.edit { it[Keys.BUFFER_PROFILE] = profile.name }
     suspend fun setAspectRatio(mode: AspectRatioMode) = context.settingsStore.edit { it[Keys.ASPECT] = mode.name }
     suspend fun setEpgRetentionDays(days: Int) = context.settingsStore.edit { it[Keys.EPG_DAYS] = days }
     suspend fun setTmdbApiKey(key: String) = context.settingsStore.edit { it[Keys.TMDB_KEY] = key.trim() }
