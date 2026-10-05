@@ -273,7 +273,9 @@ class PlayerViewModel @Inject constructor(
         }
         player.addListener(listener)
         viewModelScope.launch {
-            _state.update { it.copy(aspect = settings.current().aspectRatio) }
+            val current = settings.current()
+            loadControl.setProfiles(bufferProfilesFor(current.bufferProfile))
+            _state.update { it.copy(aspect = current.aspectRatio) }
             when (route.contentType) {
                 ContentType.LIVE.name -> startLive()
                 ContentType.MOVIE.name -> startMovie()
