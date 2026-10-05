@@ -75,21 +75,24 @@ class ProfileLoadControl(private val live: BufferProfile, private val vod: Buffe
         val maxBufferUs = Util.msToUs(p.maxBufferMs.toLong())
         val targetBytesReached = allocator.totalBytesAllocated >= targetBufferBytes
         isLoading = when {
-            bufferedUs < minBufferUs -> !(targetBytesReached && heapIsLow())
+            bufferedUs < minBufferUs -> !(targetBytesReached && bufferedUs >= recoveryFloorUs(p) && heapIsLow())
             bufferedUs >= maxBufferUs || targetBytesReached -> false
             else -> isLoading
         }
         return isLoading
     }
 
+    /** Below this much buffered media loading always resumes, so a low-heap cap can never starve playback. */
+    private fun recoveryFloorUs(p: BufferProfile): Long = Util.msToUs(p.bufferForPlaybackAfterRebufferMs.toLong())
+
     override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean {
         val p = profile
-        var targetUs = Util.msToUs(
+        var targetPlayoutUs = Util.msToUs(
             (if (parameters.rebuffering) p.bufferForPlaybackAfterRebufferMs else p.bufferForPlaybackMs).toLong(),
         )
-        targetUs = Util.getMediaDurationForPlayoutDuration(targetUs, parameters.playbackSpeed)
-        if (parameters.targetLiveOffsetUs != C.TIME_UNSET) targetUs = minOf(parameters.targetLiveOffsetUs / 2, targetUs)
-        return targetUs <= 0 || parameters.bufferedDurationUs >= targetUs
+        if (parameters.targetLiveOffsetUs != C.TIME_UNSET) targetPlayoutUs = minOf(parameters.targetLiveOffsetUs / 2, targetPlayoutUs)
+        val bufferedPlayoutUs = Util.getPlayoutDurationForMediaDuration(parameters.bufferedDurationUs, parameters.playbackSpeed)
+        return targetPlayoutUs <= 0 || bufferedPlayoutUs >= targetPlayoutUs
     }
 
     override fun shouldContinuePreloading(
@@ -107,8 +110,9 @@ class ProfileLoadControl(private val live: BufferProfile, private val vod: Buffe
 
     private fun heapIsLow(): Boolean {
         val runtime = Runtime.getRuntime()
-        val headroom = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
-        return headroom < LOW_HEAP_HEADROOM_BYTES
+        if (runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory()) >= LOW_HEAP_HEADROOM_BYTES) return false
+        allocator.trim()
+        return true
     }
 
     private fun defaultBufferSize(trackType: @C.TrackType Int): Int = when (trackType) {
