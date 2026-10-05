@@ -16,7 +16,6 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
 import io.sentry.okhttp.SentryOkHttpInterceptor
 import java.util.concurrent.TimeUnit
 import androidx.media3.exoplayer.ExoPlayer
@@ -125,6 +124,10 @@ class PlayerViewModel @Inject constructor(
         setParameters(buildUponParameters().setPreferredTextLanguage(Locale.getDefault().language))
     }
 
+    // Live keeps the lightweight zapping buffers for weak TV chipsets; movies/series buffer far deeper so
+    // high-bitrate progressive files ride out network dips without re-buffering.
+    private val loadControl = ProfileLoadControl(live = LIVE_BUFFER, vod = VOD_BUFFER)
+
     val player: ExoPlayer = ExoPlayer.Builder(
         context,
         // Keep one MediaCodec + Surface alive across TS/HLS format or resolution changes: codec reuse is
@@ -137,12 +140,7 @@ class PlayerViewModel @Inject constructor(
         .setTrackSelector(trackSelector)
         .setVideoChangeFrameRateStrategy(C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF)
         .setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
-        .setLoadControl(
-            DefaultLoadControl.Builder()
-                .setBufferDurationsMs(MIN_BUFFER_MS, MAX_BUFFER_MS, BUFFER_FOR_PLAYBACK_MS, BUFFER_AFTER_REBUFFER_MS)
-                .setPrioritizeTimeOverSizeThresholds(true)
-                .build(),
-        )
+        .setLoadControl(loadControl)
         .setMediaSourceFactory(
             DefaultMediaSourceFactory(context)
                 .setDataSourceFactory(
@@ -365,6 +363,7 @@ class PlayerViewModel @Inject constructor(
         reconnectJob?.cancel()
         readySinceMillis = 0L
         _state.update { it.copy(reconnectAttempt = 0) }
+        loadControl.setLive(live)
         val builder = MediaItem.Builder().setUri(url)
         if (live) builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.02f).build())
         player.setMediaItem(builder.build(), startPosition)
@@ -524,10 +523,8 @@ class PlayerViewModel @Inject constructor(
     }
 }
 
-private const val MIN_BUFFER_MS = 2_500
-private const val MAX_BUFFER_MS = 8_000
-private const val BUFFER_FOR_PLAYBACK_MS = 1_000
-private const val BUFFER_AFTER_REBUFFER_MS = 2_000
+private val LIVE_BUFFER = BufferProfile(minBufferMs = 2_500, maxBufferMs = 8_000, bufferForPlaybackMs = 1_000, bufferForPlaybackAfterRebufferMs = 2_000)
+private val VOD_BUFFER = BufferProfile(minBufferMs = 8_000, maxBufferMs = 30_000, bufferForPlaybackMs = 2_000, bufferForPlaybackAfterRebufferMs = 4_000)
 private const val VIDEO_JOINING_TIME_MS = 10_000L
 private const val NETWORK_TIMEOUT_MS = 15_000L
 private const val LIVE_TARGET_OFFSET_MS = 4_000L
