@@ -156,6 +156,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
         if (panel !in AUTO_DISMISS_PANELS) return@LaunchedEffect
         delay(OSD_TIMEOUT_MS)
         panel = Panel.NONE
+        if (!latestState.isPaused) controlsVisible = false
     }
     LaunchedEffect(controlsVisible, panel) {
         if (panel != Panel.NONE) return@LaunchedEffect
