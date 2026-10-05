@@ -26,6 +26,7 @@ import com.maslarski.iptv.data.repository.ContentRepository
 import com.maslarski.iptv.data.repository.PlaylistRepository
 import com.maslarski.iptv.data.settings.AppSettings
 import com.maslarski.iptv.data.settings.AspectRatioMode
+import com.maslarski.iptv.data.settings.BufferSizeProfile
 import com.maslarski.iptv.data.settings.LastChannel
 import com.maslarski.iptv.data.settings.SettingsRepository
 import com.maslarski.iptv.data.local.entity.ReminderEntity
@@ -49,6 +50,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -126,7 +129,8 @@ class PlayerViewModel @Inject constructor(
 
     // Live keeps the lightweight zapping buffers for weak TV chipsets; movies/series buffer far deeper so
     // high-bitrate progressive files ride out network dips without re-buffering.
-    private val loadControl = ProfileLoadControl(live = LIVE_BUFFER, vod = VOD_BUFFER)
+    private val loadControl =
+        ProfileLoadControl(bufferProfilesFor((settings.snapshot.value ?: AppSettings()).bufferProfile))
 
     val player: ExoPlayer = ExoPlayer.Builder(
         context,
@@ -263,9 +267,15 @@ class PlayerViewModel @Inject constructor(
     }
 
     init {
+        viewModelScope.launch {
+            settings.snapshot.filterNotNull().map { it.bufferProfile }.distinctUntilChanged()
+                .collect { loadControl.setProfiles(bufferProfilesFor(it)) }
+        }
         player.addListener(listener)
         viewModelScope.launch {
-            _state.update { it.copy(aspect = settings.current().aspectRatio) }
+            val current = settings.current()
+            loadControl.setProfiles(bufferProfilesFor(current.bufferProfile))
+            _state.update { it.copy(aspect = current.aspectRatio) }
             when (route.contentType) {
                 ContentType.LIVE.name -> startLive()
                 ContentType.MOVIE.name -> startMovie()
@@ -523,8 +533,20 @@ class PlayerViewModel @Inject constructor(
     }
 }
 
-private val LIVE_BUFFER = BufferProfile(minBufferMs = 2_500, maxBufferMs = 8_000, bufferForPlaybackMs = 1_000, bufferForPlaybackAfterRebufferMs = 2_000)
-private val VOD_BUFFER = BufferProfile(minBufferMs = 8_000, maxBufferMs = 30_000, bufferForPlaybackMs = 2_000, bufferForPlaybackAfterRebufferMs = 4_000)
+private fun bufferProfilesFor(size: BufferSizeProfile): BufferProfiles = when (size) {
+    BufferSizeProfile.SMALL -> BufferProfiles(
+        live = BufferProfile(minBufferMs = 1_500, maxBufferMs = 5_000, bufferForPlaybackMs = 800, bufferForPlaybackAfterRebufferMs = 1_500),
+        vod = BufferProfile(minBufferMs = 4_000, maxBufferMs = 15_000, bufferForPlaybackMs = 1_500, bufferForPlaybackAfterRebufferMs = 3_000),
+    )
+    BufferSizeProfile.MEDIUM -> BufferProfiles(
+        live = BufferProfile(minBufferMs = 2_500, maxBufferMs = 8_000, bufferForPlaybackMs = 1_000, bufferForPlaybackAfterRebufferMs = 2_000),
+        vod = BufferProfile(minBufferMs = 8_000, maxBufferMs = 30_000, bufferForPlaybackMs = 2_000, bufferForPlaybackAfterRebufferMs = 4_000),
+    )
+    BufferSizeProfile.LARGE -> BufferProfiles(
+        live = BufferProfile(minBufferMs = 6_000, maxBufferMs = 15_000, bufferForPlaybackMs = 2_500, bufferForPlaybackAfterRebufferMs = 4_000),
+        vod = BufferProfile(minBufferMs = 15_000, maxBufferMs = 60_000, bufferForPlaybackMs = 4_000, bufferForPlaybackAfterRebufferMs = 8_000),
+    )
+}
 private const val VIDEO_JOINING_TIME_MS = 10_000L
 private const val NETWORK_TIMEOUT_MS = 15_000L
 private const val LIVE_TARGET_OFFSET_MS = 4_000L
