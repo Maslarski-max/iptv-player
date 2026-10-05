@@ -3,6 +3,7 @@ package com.maslarski.iptv.ui.player
 import androidx.media3.common.C
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.analytics.PlayerId
@@ -23,65 +24,105 @@ data class BufferProfile(
 )
 
 /**
- * A [LoadControl] that switches between a fast-zapping live profile and a high-retention VOD profile
- * on a single [androidx.media3.exoplayer.ExoPlayer] instance. Both delegates share one allocator and
- * receive every lifecycle callback; threshold decisions come from the profile selected with [setLive]
- * before the next media item is prepared.
+ * A time-prioritised [LoadControl] whose thresholds switch between a fast-zapping live profile and a
+ * high-retention VOD profile on a single [androidx.media3.exoplayer.ExoPlayer]. Select the profile with
+ * [setLive] before preparing the next media item. Byte accounting mirrors [DefaultLoadControl]: the
+ * target size follows the selected tracks and, when the heap is nearly exhausted, caps loading even
+ * below the minimum duration.
  */
 @UnstableApi
-class ProfileLoadControl(live: BufferProfile, vod: BufferProfile) : LoadControl {
+class ProfileLoadControl(private val live: BufferProfile, private val vod: BufferProfile) : LoadControl {
     private val allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
-    private val liveControl = live.toLoadControl()
-    private val vodControl = vod.toLoadControl()
 
     @Volatile
-    private var active: DefaultLoadControl = liveControl
+    private var profile: BufferProfile = live
+    private var targetBufferBytes = DefaultLoadControl.DEFAULT_MIN_BUFFER_SIZE
+    private var isLoading = false
 
     fun setLive(isLive: Boolean) {
-        active = if (isLive) liveControl else vodControl
+        profile = if (isLive) live else vod
     }
 
-    private fun BufferProfile.toLoadControl(): DefaultLoadControl =
-        DefaultLoadControl.Builder()
-            .setAllocator(allocator)
-            .setBufferDurationsMs(minBufferMs, maxBufferMs, bufferForPlaybackMs, bufferForPlaybackAfterRebufferMs)
-            .setPrioritizeTimeOverSizeThresholds(true)
-            .build()
-
-    /** The active delegate goes last so its allocator target wins. */
-    private inline fun forEach(block: (DefaultLoadControl) -> Unit) {
-        val current = active
-        if (current !== liveControl) block(liveControl)
-        if (current !== vodControl) block(vodControl)
-        block(current)
+    override fun onPrepared(playerId: PlayerId) {
+        isLoading = false
     }
-
-    override fun onPrepared(playerId: PlayerId) = forEach { it.onPrepared(playerId) }
 
     override fun onTracksSelected(
         parameters: LoadControl.Parameters,
         trackGroups: TrackGroupArray,
         trackSelections: Array<out ExoTrackSelection?>,
-    ) = forEach { it.onTracksSelected(parameters, trackGroups, trackSelections) }
+    ) {
+        targetBufferBytes = trackSelections.filterNotNull()
+            .sumOf { defaultBufferSize(it.trackGroup.type) }
+            .coerceAtLeast(DefaultLoadControl.DEFAULT_MIN_BUFFER_SIZE)
+        allocator.setTargetBufferSize(targetBufferBytes)
+    }
 
-    override fun onStopped(playerId: PlayerId) = forEach { it.onStopped(playerId) }
+    override fun onStopped(playerId: PlayerId) = reset()
 
-    override fun onReleased(playerId: PlayerId) = forEach { it.onReleased(playerId) }
+    override fun onReleased(playerId: PlayerId) = reset()
 
     override fun getAllocator(playerId: PlayerId): Allocator = allocator
 
-    override fun getBackBufferDurationUs(playerId: PlayerId): Long = active.getBackBufferDurationUs(playerId)
+    override fun getBackBufferDurationUs(playerId: PlayerId): Long = 0L
 
-    override fun retainBackBufferFromKeyframe(playerId: PlayerId): Boolean = active.retainBackBufferFromKeyframe(playerId)
+    override fun retainBackBufferFromKeyframe(playerId: PlayerId): Boolean = false
 
-    override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean = active.shouldContinueLoading(parameters)
+    override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
+        val p = profile
+        val bufferedUs = parameters.bufferedDurationUs
+        val minBufferUs = Util.getMediaDurationForPlayoutDuration(Util.msToUs(p.minBufferMs.toLong()), parameters.playbackSpeed)
+        val maxBufferUs = Util.msToUs(p.maxBufferMs.toLong())
+        val targetBytesReached = allocator.totalBytesAllocated >= targetBufferBytes
+        isLoading = when {
+            bufferedUs < minBufferUs -> !(targetBytesReached && heapIsLow())
+            bufferedUs >= maxBufferUs || targetBytesReached -> false
+            else -> isLoading
+        }
+        return isLoading
+    }
 
-    override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean = active.shouldStartPlayback(parameters)
+    override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean {
+        val p = profile
+        var targetUs = Util.msToUs(
+            (if (parameters.rebuffering) p.bufferForPlaybackAfterRebufferMs else p.bufferForPlaybackMs).toLong(),
+        )
+        targetUs = Util.getMediaDurationForPlayoutDuration(targetUs, parameters.playbackSpeed)
+        if (parameters.targetLiveOffsetUs != C.TIME_UNSET) targetUs = minOf(parameters.targetLiveOffsetUs / 2, targetUs)
+        return targetUs <= 0 || parameters.bufferedDurationUs >= targetUs
+    }
 
     override fun shouldContinuePreloading(
         playerId: PlayerId,
         timeline: Timeline,
         mediaPeriodId: MediaSource.MediaPeriodId,
         targetPreloadPositionUs: Long,
-    ): Boolean = active.shouldContinuePreloading(playerId, timeline, mediaPeriodId, targetPreloadPositionUs)
+    ): Boolean = false
+
+    private fun reset() {
+        isLoading = false
+        targetBufferBytes = DefaultLoadControl.DEFAULT_MIN_BUFFER_SIZE
+        allocator.reset()
+    }
+
+    private fun heapIsLow(): Boolean {
+        val runtime = Runtime.getRuntime()
+        val headroom = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+        return headroom < LOW_HEAP_HEADROOM_BYTES
+    }
+
+    private fun defaultBufferSize(trackType: @C.TrackType Int): Int = when (trackType) {
+        C.TRACK_TYPE_DEFAULT -> DefaultLoadControl.DEFAULT_MUXED_BUFFER_SIZE
+        C.TRACK_TYPE_AUDIO -> DefaultLoadControl.DEFAULT_AUDIO_BUFFER_SIZE
+        C.TRACK_TYPE_VIDEO -> DefaultLoadControl.DEFAULT_VIDEO_BUFFER_SIZE
+        C.TRACK_TYPE_TEXT -> DefaultLoadControl.DEFAULT_TEXT_BUFFER_SIZE
+        C.TRACK_TYPE_METADATA -> DefaultLoadControl.DEFAULT_METADATA_BUFFER_SIZE
+        C.TRACK_TYPE_CAMERA_MOTION -> DefaultLoadControl.DEFAULT_CAMERA_MOTION_BUFFER_SIZE
+        C.TRACK_TYPE_IMAGE -> DefaultLoadControl.DEFAULT_IMAGE_BUFFER_SIZE
+        else -> 0
+    }
+
+    private companion object {
+        const val LOW_HEAP_HEADROOM_BYTES = 16L * 1024 * 1024
+    }
 }
