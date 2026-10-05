@@ -127,6 +127,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var panel by remember { mutableStateOf(Panel.NONE) }
     var lastPanelInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    fun pokePanel() { lastPanelInteraction = System.currentTimeMillis() }
     val playFocus = remember { FocusRequester() }
     val rootFocus = remember { FocusRequester() }
 
@@ -214,7 +215,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 }
                 // Only D-pad keys restart the countdown, and only while the OSD is already visible; nothing reveals it implicitly.
                 if (panel == Panel.NONE && controlsVisible && event.key in DPAD_KEYS) poke()
-                if (panel in AUTO_DISMISS_PANELS && event.key in DPAD_KEYS) lastPanelInteraction = System.currentTimeMillis()
+                if (panel in AUTO_DISMISS_PANELS && event.key in DPAD_KEYS) pokePanel()
                 handled
             }
             // Touch (phones / Play testers): a tap on bare live video opens the guide (like D-pad Left), on VOD the
@@ -352,7 +353,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 state = state,
                 onAudio = { panel = Panel.AUDIO },
                 onSubtitles = { panel = Panel.SUBTITLES },
-                onAspect = { viewModel.setAspect(it) },
+                onAspect = { viewModel.setAspect(it); pokePanel() },
                 onDismiss = { panel = Panel.NONE },
             )
         }
@@ -364,7 +365,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 offSelected = panel == Panel.SUBTITLES && !state.subtitlesEnabled,
                 onSelect = { viewModel.selectTrack(it); panel = Panel.NONE },
                 onOff = { viewModel.disableSubtitles(); panel = Panel.NONE },
-                onLoadExternal = if (panel == Panel.SUBTITLES && !state.isLive) ({ subtitlePicker.launch(arrayOf("*/*")) }) else null,
+                onLoadExternal = if (panel == Panel.SUBTITLES && !state.isLive) ({ pokePanel(); subtitlePicker.launch(arrayOf("*/*")) }) else null,
                 onDismiss = { panel = Panel.NONE },
             )
         }
