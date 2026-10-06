@@ -29,7 +29,7 @@ private val Context.settingsStore: DataStore<Preferences> by preferencesDataStor
 enum class DecoderMode { HARDWARE, SOFTWARE }
 
 /** How much media the player keeps buffered; see BufferProfiles in the player module. */
-enum class BufferSizeProfile { SMALL, MEDIUM, LARGE }
+enum class BufferSizeProfile { SMALL, MEDIUM, LARGE, EXTRA_LARGE }
 
 enum class AspectRatioMode { FIT, RATIO_16_9, RATIO_4_3, ZOOM, STRETCH }
 

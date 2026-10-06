@@ -268,4 +268,5 @@
     <string name="settings_buffer_small">Pequeño (zapping rápido)</string>
     <string name="settings_buffer_medium">Medio (equilibrado - predeterminado)</string>
     <string name="settings_buffer_large">Grande (alta retención / conexiones malas)</string>
+    <string name="settings_buffer_extra_large">Extra grande (máxima retención / conexiones débiles)</string>
 </resources>

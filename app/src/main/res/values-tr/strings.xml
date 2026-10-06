@@ -268,4 +268,5 @@
     <string name="settings_buffer_small">Küçük (hızlı kanal değiştirme)</string>
     <string name="settings_buffer_medium">Orta (dengeli - varsayılan)</string>
     <string name="settings_buffer_large">Büyük (yüksek tutma / zayıf bağlantı)</string>
+    <string name="settings_buffer_extra_large">Çok büyük (maksimum tutma / zayıf bağlantı)</string>
 </resources>

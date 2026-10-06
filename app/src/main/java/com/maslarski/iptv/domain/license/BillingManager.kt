@@ -187,7 +187,7 @@ class BillingManager @Inject constructor(
     companion object {
         private const val TAG = "BillingManager"
         /** Play Console in-app product id for the one-time lifetime unlock. */
-        const val LIFETIME_PRODUCT_ID = "maxtv_lifetime"
+        const val LIFETIME_PRODUCT_ID = "maxtv_lifetime_unlock"
         const val FALLBACK_PRICE = "€9.99"
     }
 }

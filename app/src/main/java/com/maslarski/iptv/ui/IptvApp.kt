@@ -47,6 +47,13 @@ import androidx.activity.compose.LocalActivity
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -152,6 +159,15 @@ fun IptvApp() {
         }
     }
 
+    // Cold start: put the D-pad cursor on the Home rail item so the active node is visible immediately.
+    val homeFocus = remember { FocusRequester() }
+    var bootFocusDone by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(showNav, isCompact) {
+        if (bootFocusDone || isCompact || !showNav) return@LaunchedEffect
+        withFrameNanos {}
+        bootFocusDone = runCatching { homeFocus.requestFocus() }.isSuccess
+    }
+
     fun navigateTop(route: Route) {
         nav.navigate(route) {
             popUpTo(Route.Home) { saveState = true }
@@ -184,7 +200,7 @@ fun IptvApp() {
         } else {
             Row(Modifier.fillMaxSize()) {
                 AnimatedVisibility(showNav, enter = slideInHorizontally { -it } + fadeIn(), exit = slideOutHorizontally { -it } + fadeOut()) {
-                    SideRail(destination?.let { d -> NavItems.firstOrNull { d.hasRoute(it.route::class) } }, ::navigateTop)
+                    SideRail(destination?.let { d -> NavItems.firstOrNull { d.hasRoute(it.route::class) } }, ::navigateTop, homeFocus)
                 }
                 content(Modifier.weight(1f))
             }
@@ -269,7 +285,7 @@ private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
 }
 
 @Composable
-private fun SideRail(selected: NavItem?, onSelect: (Route) -> Unit) {
+private fun SideRail(selected: NavItem?, onSelect: (Route) -> Unit, homeFocus: FocusRequester) {
     Column(
         Modifier.fillMaxHeight().width(96.dp).background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing)
             .verticalScroll(rememberScrollState()).padding(top = TvOverscanTop, bottom = 12.dp).zIndex(1f),
@@ -280,17 +296,19 @@ private fun SideRail(selected: NavItem?, onSelect: (Route) -> Unit) {
             Icon(Icons.Filled.LiveTv, null, tint = Color.White)
         }
         Spacer(Modifier.height(8.dp))
-        NavItems.forEach { item -> RailItem(item, item == selected) { onSelect(item.route) } }
+        NavItems.forEach { item ->
+            RailItem(item, item == selected, if (item.route == Route.Home) Modifier.focusRequester(homeFocus) else Modifier) { onSelect(item.route) }
+        }
     }
 }
 
 @Composable
-private fun RailItem(item: NavItem, selected: Boolean, onClick: () -> Unit) {
+private fun RailItem(item: NavItem, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val interaction = rememberInteractionSource()
     val focused by rememberFocusState(interaction)
     val shape = RoundedCornerShape(14.dp)
     Column(
-        Modifier.width(80.dp)
+        modifier.width(80.dp)
             .focusGlow(interaction, shape, focusedScale = 1.06f, borderWidth = 2.dp)
             .clip(shape)
             .background(if (focused) Palette.NeonPurple else if (selected) Palette.SurfaceHighest else Color.Transparent)

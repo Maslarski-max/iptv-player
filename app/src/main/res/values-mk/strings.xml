@@ -268,4 +268,5 @@
     <string name="settings_buffer_small">Мал (брзо менување)</string>
     <string name="settings_buffer_medium">Среден (балансиран - стандардно)</string>
     <string name="settings_buffer_large">Голем (висока издржливост / слаба врска)</string>
+    <string name="settings_buffer_extra_large">Екстра голем (максимална издржливост / слаба врска)</string>
 </resources>
