@@ -16,6 +16,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -225,6 +231,8 @@ fun SettingsScreen(
 
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // Index of the aspect-ratio row in the LazyColumn below (title, language header, language row, playback header, aspect row).
+    val ASPECT_ROW_INDEX = 4
     // Language pills are a long horizontal row; DOWN must land on the first control of the next
     // section rather than whichever pill happens to be nearest on screen.
     val aspectFocus = remember { FocusRequester() }
@@ -252,7 +260,17 @@ fun SettingsScreen(
                     Pill(
                         if (lang.tag.isEmpty()) stringResource(R.string.settings_language_system) else lang.label,
                         state.settings.languageTag == lang.tag,
-                        modifier = Modifier.focusProperties { down = aspectFocus },
+                        modifier = Modifier
+                            .focusProperties { down = aspectFocus }
+                            .onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown || event.key != Key.DirectionDown) return@onPreviewKeyEvent false
+                                scope.launch {
+                                    listState.scrollToItem(ASPECT_ROW_INDEX)
+                                    withFrameNanos {}
+                                    runCatching { aspectFocus.requestFocus() }
+                                }
+                                true
+                            },
                     ) { viewModel.setLanguage(lang.tag) }
                 }
             }

@@ -162,8 +162,8 @@ fun IptvApp() {
     // Cold start: put the D-pad cursor on the Home rail item so the active node is visible immediately.
     val homeFocus = remember { FocusRequester() }
     var bootFocusDone by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(showNav, isCompact) {
-        if (bootFocusDone || isCompact || !showNav) return@LaunchedEffect
+    LaunchedEffect(showNav, isCompact, locked, license == null) {
+        if (bootFocusDone || isCompact || !showNav || locked || license == null) return@LaunchedEffect
         bootFocusDone = true
         repeat(10) {
             withFrameNanos {}

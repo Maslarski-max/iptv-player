@@ -172,7 +172,7 @@ class BillingManager @Inject constructor(
     }
 
     private suspend fun handle(purchase: Purchase) {
-        if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED || LIFETIME_PRODUCT_ID !in purchase.products) {
+        if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED || purchase.products.none { it in LIFETIME_PRODUCT_IDS }) {
             _state.value = _state.value.copy(busy = false)
             return
         }
@@ -188,6 +188,8 @@ class BillingManager @Inject constructor(
         private const val TAG = "BillingManager"
         /** Play Console in-app product id for the one-time lifetime unlock. */
         const val LIFETIME_PRODUCT_ID = "maxtv_lifetime_unlock"
+        /** Product ids whose purchase unlocks the app, including ids sold by earlier releases. */
+        val LIFETIME_PRODUCT_IDS = setOf(LIFETIME_PRODUCT_ID, "maxtv_lifetime")
         const val FALLBACK_PRICE = "€9.99"
     }
 }
