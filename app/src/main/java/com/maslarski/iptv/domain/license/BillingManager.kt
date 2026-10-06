@@ -66,14 +66,14 @@ class BillingManager @Inject constructor(
         client.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    scope.launch { refresh() }
+                    scope.launch { guarded("refresh") { refresh() } }
                 } else {
-                    _state.value = _state.value.copy(available = false)
+                    _state.value = _state.value.copy(available = false, busy = false)
                 }
             }
 
             override fun onBillingServiceDisconnected() {
-                _state.value = _state.value.copy(available = false)
+                _state.value = _state.value.copy(available = false, busy = false)
             }
         })
     }
@@ -143,8 +143,10 @@ class BillingManager @Inject constructor(
     override fun onPurchasesUpdated(result: BillingResult, purchases: List<Purchase>?) {
         try {
             when (result.responseCode) {
-                BillingClient.BillingResponseCode.OK -> purchases.orEmpty().forEach { purchase ->
-                    scope.launch { guarded("handlePurchase") { handle(purchase) } }
+                BillingClient.BillingResponseCode.OK -> {
+                    val list = purchases.orEmpty()
+                    if (list.isEmpty()) _state.value = _state.value.copy(busy = false)
+                    list.forEach { purchase -> scope.launch { guarded("handlePurchase") { handle(purchase) } } }
                 }
                 BillingClient.BillingResponseCode.USER_CANCELED -> _state.value = _state.value.copy(busy = false)
                 else -> _state.value = _state.value.copy(busy = false, error = result.debugMessage)

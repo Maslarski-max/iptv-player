@@ -28,6 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -117,6 +118,7 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
     val activateFocus = remember { FocusRequester() }
     val activity = LocalActivity.current
     val dateFormat = remember { DateFormat.getDateInstance(DateFormat.LONG) }
+    LaunchedEffect(billing.available) { if (billing.available) storeUnavailable = false }
 
     Box(
         Modifier.fillMaxSize().background(
