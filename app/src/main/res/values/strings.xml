@@ -309,4 +309,5 @@
     <string name="settings_buffer_small">Small (Fast Zapping)</string>
     <string name="settings_buffer_medium">Medium (Balanced - Default)</string>
     <string name="settings_buffer_large">Large (High Retention / Poor Connections)</string>
+    <string name="settings_buffer_extra_large">Extra Large (Maximum Retention / Weak Connections)</string>
 </resources>

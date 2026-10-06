@@ -546,6 +546,11 @@ private fun bufferProfilesFor(size: BufferSizeProfile): BufferProfiles = when (s
         live = BufferProfile(minBufferMs = 6_000, maxBufferMs = 15_000, bufferForPlaybackMs = 2_500, bufferForPlaybackAfterRebufferMs = 4_000),
         vod = BufferProfile(minBufferMs = 15_000, maxBufferMs = 60_000, bufferForPlaybackMs = 4_000, bufferForPlaybackAfterRebufferMs = 8_000),
     )
+
+    BufferSizeProfile.EXTRA_LARGE -> BufferProfiles(
+        live = BufferProfile(minBufferMs = 12_000, maxBufferMs = 30_000, bufferForPlaybackMs = 4_000, bufferForPlaybackAfterRebufferMs = 6_000),
+        vod = BufferProfile(minBufferMs = 25_000, maxBufferMs = 60_000, bufferForPlaybackMs = 6_000, bufferForPlaybackAfterRebufferMs = 10_000),
+    )
 }
 private const val VIDEO_JOINING_TIME_MS = 10_000L
 private const val NETWORK_TIMEOUT_MS = 15_000L

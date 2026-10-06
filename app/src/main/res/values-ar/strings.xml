@@ -272,4 +272,5 @@
     <string name="settings_buffer_small">صغير (تبديل سريع)</string>
     <string name="settings_buffer_medium">متوسط (متوازن - افتراضي)</string>
     <string name="settings_buffer_large">كبير (احتفاظ عالٍ / اتصال ضعيف)</string>
+    <string name="settings_buffer_extra_large">كبير جدًا (أقصى احتفاظ / اتصال ضعيف)</string>
 </resources>

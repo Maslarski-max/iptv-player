@@ -269,4 +269,5 @@
     <string name="settings_buffer_small">Mali (brzo menjanje)</string>
     <string name="settings_buffer_medium">Srednji (uravnotežen - podrazumevano)</string>
     <string name="settings_buffer_large">Veliki (visoka zadrška / loša veza)</string>
+    <string name="settings_buffer_extra_large">Ekstra veliki (maksimalna zadrška / slaba veza)</string>
 </resources>

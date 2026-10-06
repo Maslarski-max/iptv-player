@@ -16,6 +16,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -222,6 +231,11 @@ fun SettingsScreen(
 
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // Index of the aspect-ratio row in the LazyColumn below (title, language header, language row, playback header, aspect row).
+    val ASPECT_ROW_INDEX = 4
+    // Language pills are a long horizontal row; DOWN must land on the first control of the next
+    // section rather than whichever pill happens to be nearest on screen.
+    val aspectFocus = remember { FocusRequester() }
     LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp)) {
         // Focus only scrolls the focused control into view, so when the first card gains focus we
         // scroll to the top explicitly to bring the headings back after scrolling down.
@@ -243,7 +257,21 @@ fun SettingsScreen(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(SupportedLanguages.size) { i ->
                     val lang = SupportedLanguages[i]
-                    Pill(if (lang.tag.isEmpty()) stringResource(R.string.settings_language_system) else lang.label, state.settings.languageTag == lang.tag) { viewModel.setLanguage(lang.tag) }
+                    Pill(
+                        if (lang.tag.isEmpty()) stringResource(R.string.settings_language_system) else lang.label,
+                        state.settings.languageTag == lang.tag,
+                        modifier = Modifier
+                            .focusProperties { down = aspectFocus }
+                            .onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown || event.key != Key.DirectionDown) return@onPreviewKeyEvent false
+                                scope.launch {
+                                    listState.scrollToItem(ASPECT_ROW_INDEX)
+                                    withFrameNanos {}
+                                    runCatching { aspectFocus.requestFocus() }
+                                }
+                                true
+                            },
+                    ) { viewModel.setLanguage(lang.tag) }
                 }
             }
             Spacer(Modifier.height(28.dp))
@@ -256,7 +284,11 @@ fun SettingsScreen(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(AspectRatioMode.entries.size) { i ->
                     val mode = AspectRatioMode.entries[i]
-                    Pill(stringResource(mode.label()), state.settings.aspectRatio == mode) { viewModel.setAspect(mode) }
+                    Pill(
+                        stringResource(mode.label()),
+                        state.settings.aspectRatio == mode,
+                        modifier = if (i == 0) Modifier.focusRequester(aspectFocus) else Modifier,
+                    ) { viewModel.setAspect(mode) }
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -287,6 +319,7 @@ fun SettingsScreen(
                         BufferSizeProfile.SMALL -> R.string.settings_buffer_small
                         BufferSizeProfile.MEDIUM -> R.string.settings_buffer_medium
                         BufferSizeProfile.LARGE -> R.string.settings_buffer_large
+                        BufferSizeProfile.EXTRA_LARGE -> R.string.settings_buffer_extra_large
                     }
                     Pill(stringResource(label), state.settings.bufferProfile == profile) { viewModel.setBufferProfile(profile) }
                 }
