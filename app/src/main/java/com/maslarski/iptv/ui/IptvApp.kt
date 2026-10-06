@@ -164,8 +164,11 @@ fun IptvApp() {
     var bootFocusDone by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(showNav, isCompact) {
         if (bootFocusDone || isCompact || !showNav) return@LaunchedEffect
-        withFrameNanos {}
-        bootFocusDone = runCatching { homeFocus.requestFocus() }.isSuccess
+        bootFocusDone = true
+        repeat(10) {
+            withFrameNanos {}
+            if (runCatching { homeFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+        }
     }
 
     fun navigateTop(route: Route) {
