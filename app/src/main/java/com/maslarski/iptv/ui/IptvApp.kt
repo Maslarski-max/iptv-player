@@ -63,7 +63,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -328,20 +331,28 @@ private fun RailItem(item: NavItem, selected: Boolean, modifier: Modifier = Modi
 @Composable
 private fun BottomBar(selected: NavItem?, onSelect: (Route) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 8.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing).padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         NavItems.filter { it.route != Route.Favorites }.forEach { item ->
             val interaction = rememberInteractionSource()
             val isSel = item == selected
             Column(
-                Modifier.clip(CircleShape)
+                Modifier.weight(1f).clip(CircleShape)
                     .clickable(interactionSource = interaction, indication = null) { onSelect(item.route) }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 2.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(item.icon, null, tint = if (isSel) Palette.NeonPurple else Palette.Muted, modifier = Modifier.size(22.dp))
-                Text(stringResource(item.label), style = MaterialTheme.typography.labelSmall, color = if (isSel) Palette.NeonPurple else Palette.Muted)
+                Text(
+                    stringResource(item.label),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isSel) Palette.NeonPurple else Palette.Muted,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    autoSize = TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = MaterialTheme.typography.labelSmall.fontSize, stepSize = 0.5.sp),
+                )
             }
         }
     }

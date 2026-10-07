@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -117,6 +119,7 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
     var storeUnavailable by remember { mutableStateOf(false) }
     val activateFocus = remember { FocusRequester() }
     val activity = LocalActivity.current
+    val compact = LocalConfiguration.current.screenWidthDp < 600
     val dateFormat = remember { DateFormat.getDateInstance(DateFormat.LONG) }
     LaunchedEffect(billing.available) { if (billing.available) storeUnavailable = false }
 
@@ -126,7 +129,7 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
         ),
     ) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 48.dp, vertical = 32.dp),
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = if (compact) 20.dp else 48.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Icon(Icons.Filled.WorkspacePremium, null, tint = Palette.Gold, modifier = Modifier.height(56.dp).width(56.dp))
@@ -144,19 +147,28 @@ fun ActivationScreen(onDone: () -> Unit, viewModel: ActivationViewModel = hiltVi
             Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = Palette.Muted, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 720.dp))
             Spacer(Modifier.height(28.dp))
 
-            Row(
-                Modifier.widthIn(max = 720.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                TrialCard(current, Modifier.weight(1f))
-                LifetimeCard(
-                    price = billing.price,
-                    owned = current?.isLifetime == true || billing.owned,
-                    busy = billing.busy,
-                    storeUnavailable = storeUnavailable || billing.error != null,
-                    onBuy = { if (activity == null || !viewModel.purchase(activity)) storeUnavailable = true },
-                    modifier = Modifier.weight(1f),
-                )
+            BoxWithConstraints(Modifier.widthIn(max = 720.dp).fillMaxWidth()) {
+                val lifetime: @Composable (Modifier) -> Unit = { m ->
+                    LifetimeCard(
+                        price = billing.price,
+                        owned = current?.isLifetime == true || billing.owned,
+                        busy = billing.busy,
+                        storeUnavailable = storeUnavailable || billing.error != null,
+                        onBuy = { if (activity == null || !viewModel.purchase(activity)) storeUnavailable = true },
+                        modifier = m,
+                    )
+                }
+                if (maxWidth < 520.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        lifetime(Modifier.fillMaxWidth())
+                        TrialCard(current, Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        TrialCard(current, Modifier.weight(1f))
+                        lifetime(Modifier.weight(1f))
+                    }
+                }
             }
             Spacer(Modifier.height(28.dp))
 

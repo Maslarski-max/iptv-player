@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -236,7 +238,7 @@ fun SettingsScreen(
     // Language pills are a long horizontal row; DOWN must land on the first control of the next
     // section rather than whichever pill happens to be nearest on screen.
     val aspectFocus = remember { FocusRequester() }
-    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 48.dp, vertical = 24.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = if (LocalConfiguration.current.screenWidthDp < 600) 20.dp else 48.dp, vertical = 24.dp)) {
         // Focus only scrolls the focused control into view, so when the first card gains focus we
         // scroll to the top explicitly to bring the headings back after scrolling down.
         item {
@@ -425,7 +427,10 @@ private fun AccountCard(license: LicenseState, onActivate: () -> Unit) {
                 Text(statusText, style = MaterialTheme.typography.headlineSmall, color = statusColor)
                 license.plan?.let { Text(stringResource(it.label()), style = MaterialTheme.typography.bodyMedium, color = Palette.Muted) }
             }
-            Badge(statusText, color = statusColor.copy(alpha = 0.2f), textColor = statusColor)
+            if (LocalConfiguration.current.screenWidthDp >= 600) {
+                Spacer(Modifier.width(16.dp))
+                Badge(statusText, color = statusColor.copy(alpha = 0.2f), textColor = statusColor)
+            }
         }
         Spacer(Modifier.height(16.dp))
         when {
@@ -458,14 +463,20 @@ private fun AccountCard(license: LicenseState, onActivate: () -> Unit) {
 
 @Composable
 private fun InfoRow(label: String, value: String, mono: Boolean = false) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = Palette.Muted, modifier = Modifier.weight(1f))
-        Text(
-            value,
-            style = if (mono) MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace, letterSpacing = 1.sp)
-            else MaterialTheme.typography.titleMedium,
-            color = if (mono) Palette.ElectricBlue else Palette.OnSurface,
-        )
+    val valueStyle = if (mono) MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace, letterSpacing = 1.sp)
+    else MaterialTheme.typography.titleMedium
+    val valueColor = if (mono) Palette.ElectricBlue else Palette.OnSurface
+    if (LocalConfiguration.current.screenWidthDp < 600) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
+            Text(value, style = valueStyle, color = valueColor)
+        }
+    } else {
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = Palette.Muted, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(16.dp))
+            Text(value, style = valueStyle, color = valueColor, textAlign = TextAlign.End)
+        }
     }
 }
 
