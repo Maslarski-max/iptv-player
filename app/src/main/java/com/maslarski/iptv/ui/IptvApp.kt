@@ -64,6 +64,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -335,13 +337,20 @@ private fun BottomBar(selected: NavItem?, onSelect: (Route) -> Unit) {
             val interaction = rememberInteractionSource()
             val isSel = item == selected
             Column(
-                Modifier.clip(CircleShape)
+                Modifier.weight(1f).clip(CircleShape)
                     .clickable(interactionSource = interaction, indication = null) { onSelect(item.route) }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 2.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(item.icon, null, tint = if (isSel) Palette.NeonPurple else Palette.Muted, modifier = Modifier.size(22.dp))
-                Text(stringResource(item.label), style = MaterialTheme.typography.labelSmall, color = if (isSel) Palette.NeonPurple else Palette.Muted)
+                Text(
+                    stringResource(item.label),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isSel) Palette.NeonPurple else Palette.Muted,
+                    maxLines = 1,
+                    softWrap = false,
+                    autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = MaterialTheme.typography.labelSmall.fontSize, stepSize = 1.sp),
+                )
             }
         }
     }
