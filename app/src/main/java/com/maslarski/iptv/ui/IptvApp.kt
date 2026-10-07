@@ -63,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.TextAutoSize
@@ -330,7 +331,7 @@ private fun RailItem(item: NavItem, selected: Boolean, modifier: Modifier = Modi
 @Composable
 private fun BottomBar(selected: NavItem?, onSelect: (Route) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 8.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing).padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         NavItems.filter { it.route != Route.Favorites }.forEach { item ->
@@ -349,7 +350,8 @@ private fun BottomBar(selected: NavItem?, onSelect: (Route) -> Unit) {
                     color = if (isSel) Palette.NeonPurple else Palette.Muted,
                     maxLines = 1,
                     softWrap = false,
-                    autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = MaterialTheme.typography.labelSmall.fontSize, stepSize = 1.sp),
+                    overflow = TextOverflow.Ellipsis,
+                    autoSize = TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = MaterialTheme.typography.labelSmall.fontSize, stepSize = 0.5.sp),
                 )
             }
         }
