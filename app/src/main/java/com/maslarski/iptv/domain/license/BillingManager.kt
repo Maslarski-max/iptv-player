@@ -88,10 +88,18 @@ class BillingManager @Inject constructor(
         val params = QueryProductDetailsParams.newBuilder().setProductList(listOf(product)).build()
         val found = suspendCancellableCoroutine<ProductDetails?> { cont ->
             client.queryProductDetailsAsync(params) { result, queryResult ->
-                val list = if (result.responseCode == BillingClient.BillingResponseCode.OK) queryResult.productDetailsList else emptyList()
-                cont.resume(list.firstOrNull { it.productId == LIFETIME_PRODUCT_ID })
+                if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+                    logFailure("queryProductDetails", result)
+                    cont.resume(null)
+                    return@queryProductDetailsAsync
+                }
+                queryResult.unfetchedProductList.forEach {
+                    Log.w(TAG, "Billing queryProductDetails: product ${it.productId} unfetched, status=${it.statusCode}")
+                }
+                cont.resume(queryResult.productDetailsList.firstOrNull { it.productId == LIFETIME_PRODUCT_ID })
             }
         }
+        if (found == null) Log.w(TAG, "Billing queryProductDetails: $LIFETIME_PRODUCT_ID not returned by Play")
         details = found
         val price = found?.oneTimePurchaseOfferDetails?.formattedPrice ?: FALLBACK_PRICE
         _state.value = _state.value.copy(available = found != null, price = price)
@@ -102,6 +110,7 @@ class BillingManager @Inject constructor(
         val params = QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
         val purchases = suspendCancellableCoroutine<List<Purchase>> { cont ->
             client.queryPurchasesAsync(params) { result, list ->
+                if (result.responseCode != BillingClient.BillingResponseCode.OK) logFailure("queryPurchases", result)
                 cont.resume(if (result.responseCode == BillingClient.BillingResponseCode.OK) list else emptyList())
             }
         }
@@ -187,12 +196,18 @@ class BillingManager @Inject constructor(
 
     private suspend fun handle(purchase: Purchase) {
         if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED || purchase.products.none { it in LIFETIME_PRODUCT_IDS }) {
+            Log.w(TAG, "Billing purchase ignored: state=${purchase.purchaseState} products=${purchase.products}")
             _state.value = _state.value.copy(busy = false)
             return
         }
         if (!purchase.isAcknowledged) {
             val ack = AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()
-            suspendCancellableCoroutine<Unit> { cont -> client.acknowledgePurchase(ack) { cont.resume(Unit) } }
+            val ackResult = suspendCancellableCoroutine<BillingResult> { cont -> client.acknowledgePurchase(ack) { cont.resume(it) } }
+            if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                logFailure("acknowledgePurchase", ackResult)
+                _state.value = _state.value.copy(busy = false, error = ackResult.debugMessage)
+                return
+            }
         }
         license.activatePurchase(purchase.purchaseToken)
         _state.value = _state.value.copy(owned = true, busy = false, error = null)
