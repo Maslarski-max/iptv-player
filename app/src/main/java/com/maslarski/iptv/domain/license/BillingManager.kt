@@ -68,11 +68,13 @@ class BillingManager @Inject constructor(
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                     scope.launch { guarded("refresh") { refresh() } }
                 } else {
+                    logFailure("setup", result)
                     _state.value = _state.value.copy(available = false, busy = false)
                 }
             }
 
             override fun onBillingServiceDisconnected() {
+                Log.w(TAG, "Billing service disconnected")
                 _state.value = _state.value.copy(available = false, busy = false)
             }
         })
@@ -134,6 +136,7 @@ class BillingManager @Inject constructor(
             return false
         }
         if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+            logFailure("launchBillingFlow", result)
             _state.value = _state.value.copy(busy = false, error = result.debugMessage)
             return false
         }
@@ -149,12 +152,23 @@ class BillingManager @Inject constructor(
                     list.forEach { purchase -> scope.launch { guarded("handlePurchase") { handle(purchase) } } }
                 }
                 BillingClient.BillingResponseCode.USER_CANCELED -> _state.value = _state.value.copy(busy = false)
-                else -> _state.value = _state.value.copy(busy = false, error = result.debugMessage)
+                else -> {
+                    logFailure("purchasesUpdated", result)
+                    _state.value = _state.value.copy(busy = false, error = result.debugMessage)
+                }
             }
         } catch (e: RuntimeException) {
             reportBillingFailure("onPurchasesUpdated", e)
             _state.value = _state.value.copy(busy = false, error = e.message)
         }
+    }
+
+    private fun logFailure(stage: String, result: BillingResult) {
+        Log.w(
+            TAG,
+            "Billing $stage failed: response=${result.responseCode} " +
+                "subResponse=${result.onPurchasesUpdatedSubResponseCode} debug=\"${result.debugMessage}\"",
+        )
     }
 
     private suspend fun guarded(stage: String, block: suspend () -> Unit) {
