@@ -132,7 +132,7 @@ private val DPAD_KEYS = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionL
 fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val guide by viewModel.guide.collectAsStateWithLifecycle()
-    val pip = rememberPictureInPicture(state.isPlaying, state.videoAspect)
+    val pip = rememberPictureInPicture(isPlaying = !state.isPaused, aspect = state.videoAspect)
     val activity = LocalActivity.current as? ComponentActivity
     val view = LocalView.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -163,17 +163,22 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             onDispose {}
         } else {
             val insetsController = WindowCompat.getInsetsController(activity.window, view)
+            PlayerWindowOwners.immersiveCount++
             insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             insetsController.hide(WindowInsetsCompat.Type.systemBars())
-            onDispose { insetsController.show(WindowInsetsCompat.Type.systemBars()) }
+            onDispose {
+                PlayerWindowOwners.immersiveCount--
+                if (PlayerWindowOwners.immersiveCount == 0) {
+                    insetsController.show(WindowInsetsCompat.Type.systemBars())
+                }
+            }
         }
     }
 
-    val latestIsPlaying by rememberUpdatedState(state.isPlaying)
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_STOP -> if (latestIsPlaying) {
+                Lifecycle.Event.ON_STOP -> if (viewModel.player.playWhenReady) {
                     viewModel.pause()
                     pausedByStop = true
                 }

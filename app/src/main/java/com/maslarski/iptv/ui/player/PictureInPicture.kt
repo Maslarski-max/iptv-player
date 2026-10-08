@@ -18,6 +18,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.core.app.PictureInPictureModeChangedInfo
 import androidx.core.util.Consumer
 
+internal object PlayerWindowOwners {
+    var immersiveCount = 0
+    var pipCount = 0
+}
+
 @Stable
 class PipHandle(val supported: Boolean, inPip: State<Boolean>, private val enter: () -> Boolean) {
     val inPip by inPip
@@ -57,6 +62,7 @@ fun rememberPictureInPicture(isPlaying: Boolean, aspect: Rational?): PipHandle {
         if (activity == null || !supported) {
             onDispose {}
         } else {
+            PlayerWindowOwners.pipCount++
             val userLeaveHintListener = Runnable {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && latestIsPlaying.value) latestEnter.value()
             }
@@ -69,7 +75,8 @@ fun rememberPictureInPicture(isPlaying: Boolean, aspect: Rational?): PipHandle {
             onDispose {
                 activity.removeOnUserLeaveHintListener(userLeaveHintListener)
                 activity.removeOnPictureInPictureModeChangedListener(pictureInPictureModeChangedListener)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PlayerWindowOwners.pipCount--
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && PlayerWindowOwners.pipCount == 0) {
                     activity.setPictureInPictureParams(pictureInPictureParams(latestAspect.value, autoEnter = false))
                 }
             }

@@ -246,10 +246,14 @@ class PlayerViewModel @Inject constructor(
         override fun onIsPlayingChanged(isPlaying: Boolean) { _state.update { it.copy(isPlaying = isPlaying) } }
 
         override fun onVideoSizeChanged(videoSize: VideoSize) {
-            if (videoSize.width > 0 && videoSize.height > 0) {
-                _state.update {
-                    it.copy(videoAspect = Rational((videoSize.width * videoSize.pixelWidthHeightRatio).roundToInt(), videoSize.height))
-                }
+            _state.update {
+                it.copy(
+                    videoAspect = if (videoSize.width > 0 && videoSize.height > 0) {
+                        Rational((videoSize.width * videoSize.pixelWidthHeightRatio).roundToInt(), videoSize.height)
+                    } else {
+                        null
+                    },
+                )
             }
         }
 
@@ -384,7 +388,7 @@ class PlayerViewModel @Inject constructor(
     private fun prepare(url: String, live: Boolean, startPosition: Long = 0L) {
         reconnectJob?.cancel()
         readySinceMillis = 0L
-        _state.update { it.copy(reconnectAttempt = 0) }
+        _state.update { it.copy(reconnectAttempt = 0, videoAspect = null) }
         loadControl.setLive(live)
         val builder = MediaItem.Builder().setUri(url)
         if (live) builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.02f).build())
