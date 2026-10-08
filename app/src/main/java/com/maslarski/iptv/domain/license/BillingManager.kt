@@ -18,7 +18,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,18 +63,30 @@ class BillingManager @Inject constructor(
         .enableAutoServiceReconnection()
         .build()
 
+    private var setupTimeout: Job? = null
+
     fun connect() {
         if (client.isReady) return
+        setupTimeout?.cancel()
+        setupTimeout = scope.launch {
+            delay(SETUP_TIMEOUT_MS)
+            Log.w(TAG, "Billing setup timed out after ${SETUP_TIMEOUT_MS}ms without onBillingSetupFinished")
+            _state.value = _state.value.copy(available = false, busy = false)
+        }
         client.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
+                setupTimeout?.cancel()
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    Log.i(TAG, "Billing setup finished OK (response=${result.responseCode})")
                     scope.launch { guarded("refresh") { refresh() } }
                 } else {
+                    logFailure("setup", result)
                     _state.value = _state.value.copy(available = false, busy = false)
                 }
             }
 
             override fun onBillingServiceDisconnected() {
+                Log.w(TAG, "Billing service disconnected")
                 _state.value = _state.value.copy(available = false, busy = false)
             }
         })
@@ -86,10 +100,18 @@ class BillingManager @Inject constructor(
         val params = QueryProductDetailsParams.newBuilder().setProductList(listOf(product)).build()
         val found = suspendCancellableCoroutine<ProductDetails?> { cont ->
             client.queryProductDetailsAsync(params) { result, queryResult ->
-                val list = if (result.responseCode == BillingClient.BillingResponseCode.OK) queryResult.productDetailsList else emptyList()
-                cont.resume(list.firstOrNull { it.productId == LIFETIME_PRODUCT_ID })
+                if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+                    logFailure("queryProductDetails", result)
+                    cont.resume(null)
+                    return@queryProductDetailsAsync
+                }
+                queryResult.unfetchedProductList.forEach {
+                    Log.w(TAG, "Billing queryProductDetails: product ${it.productId} unfetched, status=${it.statusCode}")
+                }
+                cont.resume(queryResult.productDetailsList.firstOrNull { it.productId == LIFETIME_PRODUCT_ID })
             }
         }
+        if (found == null) Log.w(TAG, "Billing queryProductDetails: $LIFETIME_PRODUCT_ID not returned by Play")
         details = found
         val price = found?.oneTimePurchaseOfferDetails?.formattedPrice ?: FALLBACK_PRICE
         _state.value = _state.value.copy(available = found != null, price = price)
@@ -100,6 +122,7 @@ class BillingManager @Inject constructor(
         val params = QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()
         val purchases = suspendCancellableCoroutine<List<Purchase>> { cont ->
             client.queryPurchasesAsync(params) { result, list ->
+                if (result.responseCode != BillingClient.BillingResponseCode.OK) logFailure("queryPurchases", result)
                 cont.resume(if (result.responseCode == BillingClient.BillingResponseCode.OK) list else emptyList())
             }
         }
@@ -134,6 +157,7 @@ class BillingManager @Inject constructor(
             return false
         }
         if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+            logFailure("launchBillingFlow", result)
             _state.value = _state.value.copy(busy = false, error = result.debugMessage)
             return false
         }
@@ -149,12 +173,23 @@ class BillingManager @Inject constructor(
                     list.forEach { purchase -> scope.launch { guarded("handlePurchase") { handle(purchase) } } }
                 }
                 BillingClient.BillingResponseCode.USER_CANCELED -> _state.value = _state.value.copy(busy = false)
-                else -> _state.value = _state.value.copy(busy = false, error = result.debugMessage)
+                else -> {
+                    logFailure("purchasesUpdated", result)
+                    _state.value = _state.value.copy(busy = false, error = result.debugMessage)
+                }
             }
         } catch (e: RuntimeException) {
             reportBillingFailure("onPurchasesUpdated", e)
             _state.value = _state.value.copy(busy = false, error = e.message)
         }
+    }
+
+    private fun logFailure(stage: String, result: BillingResult) {
+        Log.w(
+            TAG,
+            "Billing $stage failed: response=${result.responseCode} " +
+                "subResponse=${result.onPurchasesUpdatedSubResponseCode} debug=\"${result.debugMessage}\"",
+        )
     }
 
     private suspend fun guarded(stage: String, block: suspend () -> Unit) {
@@ -173,19 +208,24 @@ class BillingManager @Inject constructor(
 
     private suspend fun handle(purchase: Purchase) {
         if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED || purchase.products.none { it in LIFETIME_PRODUCT_IDS }) {
+            Log.w(TAG, "Billing purchase ignored: state=${purchase.purchaseState} products=${purchase.products}")
             _state.value = _state.value.copy(busy = false)
             return
         }
-        if (!purchase.isAcknowledged) {
-            val ack = AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()
-            suspendCancellableCoroutine<Unit> { cont -> client.acknowledgePurchase(ack) { cont.resume(Unit) } }
-        }
         license.activatePurchase(purchase.purchaseToken)
         _state.value = _state.value.copy(owned = true, busy = false, error = null)
+        if (!purchase.isAcknowledged) {
+            val ack = AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()
+            val ackResult = suspendCancellableCoroutine<BillingResult> { cont -> client.acknowledgePurchase(ack) { cont.resume(it) } }
+            // Entitlement is already granted; an unacknowledged purchase is returned again by queryPurchases
+            // on the next refresh, which retries the acknowledgement.
+            if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) logFailure("acknowledgePurchase", ackResult)
+        }
     }
 
     companion object {
         private const val TAG = "BillingManager"
+        private const val SETUP_TIMEOUT_MS = 10_000L
         /** Play Console in-app product id for the one-time lifetime unlock. */
         const val LIFETIME_PRODUCT_ID = "maxtv_lifetime_unlock"
         /** Product ids whose purchase unlocks the app, including ids sold by earlier releases. */

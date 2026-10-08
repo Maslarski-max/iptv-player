@@ -38,8 +38,8 @@ android {
         applicationId = "com.maslarski.iptv"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "1.0.9"
+        versionCode = 14
+        versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
