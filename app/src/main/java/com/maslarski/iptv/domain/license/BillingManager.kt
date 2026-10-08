@@ -18,7 +18,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,11 +63,21 @@ class BillingManager @Inject constructor(
         .enableAutoServiceReconnection()
         .build()
 
+    private var setupTimeout: Job? = null
+
     fun connect() {
         if (client.isReady) return
+        setupTimeout?.cancel()
+        setupTimeout = scope.launch {
+            delay(SETUP_TIMEOUT_MS)
+            Log.w(TAG, "Billing setup timed out after ${SETUP_TIMEOUT_MS}ms without onBillingSetupFinished")
+            _state.value = _state.value.copy(available = false, busy = false)
+        }
         client.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
+                setupTimeout?.cancel()
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    Log.i(TAG, "Billing setup finished OK (response=${result.responseCode})")
                     scope.launch { guarded("refresh") { refresh() } }
                 } else {
                     logFailure("setup", result)
@@ -213,6 +225,7 @@ class BillingManager @Inject constructor(
 
     companion object {
         private const val TAG = "BillingManager"
+        private const val SETUP_TIMEOUT_MS = 10_000L
         /** Play Console in-app product id for the one-time lifetime unlock. */
         const val LIFETIME_PRODUCT_ID = "maxtv_lifetime_unlock"
         /** Product ids whose purchase unlocks the app, including ids sold by earlier releases. */
