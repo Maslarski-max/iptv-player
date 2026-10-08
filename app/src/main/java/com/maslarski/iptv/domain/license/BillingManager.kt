@@ -65,7 +65,7 @@ class BillingManager @Inject constructor(
 
     private enum class SetupState { IDLE, CONNECTING, CONNECTED }
 
-    private var setupState = SetupState.IDLE
+    @Volatile private var setupState = SetupState.IDLE
     private var setupTimeout: Job? = null
 
     fun connect() {
