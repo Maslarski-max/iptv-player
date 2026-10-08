@@ -63,29 +63,41 @@ class BillingManager @Inject constructor(
         .enableAutoServiceReconnection()
         .build()
 
+    private enum class SetupState { IDLE, CONNECTING, CONNECTED }
+
+    private var setupState = SetupState.IDLE
     private var setupTimeout: Job? = null
 
     fun connect() {
-        if (client.isReady) return
+        if (setupState != SetupState.IDLE) {
+            Log.i(TAG, "Billing connect skipped: setup $setupState")
+            return
+        }
+        setupState = SetupState.CONNECTING
+        Log.i(TAG, "Billing connect: starting setup")
         setupTimeout?.cancel()
         setupTimeout = scope.launch {
             delay(SETUP_TIMEOUT_MS)
             Log.w(TAG, "Billing setup timed out after ${SETUP_TIMEOUT_MS}ms without onBillingSetupFinished")
+            setupState = SetupState.IDLE
             _state.value = _state.value.copy(available = false, busy = false)
         }
         client.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 setupTimeout?.cancel()
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    setupState = SetupState.CONNECTED
                     Log.i(TAG, "Billing setup finished OK (response=${result.responseCode})")
                     scope.launch { guarded("refresh") { refresh() } }
                 } else {
+                    setupState = SetupState.IDLE
                     logFailure("setup", result)
                     _state.value = _state.value.copy(available = false, busy = false)
                 }
             }
 
             override fun onBillingServiceDisconnected() {
+                setupState = SetupState.IDLE
                 Log.w(TAG, "Billing service disconnected")
                 _state.value = _state.value.copy(available = false, busy = false)
             }
@@ -137,7 +149,7 @@ class BillingManager @Inject constructor(
      */
     fun purchase(activity: Activity): Boolean {
         if (activity.isFinishing || activity.isDestroyed || activity.window == null) return false
-        if (!client.isReady) {
+        if (setupState != SetupState.CONNECTED) {
             connect()
             return false
         }
