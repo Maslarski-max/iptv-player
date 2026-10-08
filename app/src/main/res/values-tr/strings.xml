@@ -263,4 +263,9 @@
     <string name="settings_audio_decoder">Ses kod çözücü</string>
     <string name="settings_decoder_hardware">Donanım Hızlandırmalı (Varsayılan)</string>
     <string name="settings_decoder_software">Yazılımla Kod Çözme</string>
+    <string name="settings_buffer_profile">Arabellek Boyutu Profili</string>
+    <string name="settings_buffer_profile_body">Ne kadar videonun arabellekte tutulacağı. Küçük en hızlı kanal değiştirir; Büyük zayıf bağlantılara dayanır. Oynatıcı bir sonraki açılışta uygulanır.</string>
+    <string name="settings_buffer_small">Küçük (hızlı kanal değiştirme)</string>
+    <string name="settings_buffer_medium">Orta (dengeli - varsayılan)</string>
+    <string name="settings_buffer_large">Büyük (yüksek tutma / zayıf bağlantı)</string>
 </resources>

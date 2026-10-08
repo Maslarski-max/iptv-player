@@ -304,4 +304,9 @@
     <string name="settings_audio_decoder">Audio decoder</string>
     <string name="settings_decoder_hardware">Hardware Accelerated (Default)</string>
     <string name="settings_decoder_software">Software Decoding</string>
+    <string name="settings_buffer_profile">Buffer Size Profile</string>
+    <string name="settings_buffer_profile_body">How much video is kept buffered. Small zaps fastest; Large rides out poor connections. Applies when the player is next opened.</string>
+    <string name="settings_buffer_small">Small (Fast Zapping)</string>
+    <string name="settings_buffer_medium">Medium (Balanced - Default)</string>
+    <string name="settings_buffer_large">Large (High Retention / Poor Connections)</string>
 </resources>

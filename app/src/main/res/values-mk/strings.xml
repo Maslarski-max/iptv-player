@@ -263,4 +263,9 @@
     <string name="settings_audio_decoder">Аудио декодер</string>
     <string name="settings_decoder_hardware">Хардверско забрзување (стандардно)</string>
     <string name="settings_decoder_software">Софтверско декодирање</string>
+    <string name="settings_buffer_profile">Профил на бафер</string>
+    <string name="settings_buffer_profile_body">Колку видео се чува во бафер. Мал менува канали најбрзо; Голем поднесува слаба врска. Важи при следно отворање на плеерот.</string>
+    <string name="settings_buffer_small">Мал (брзо менување)</string>
+    <string name="settings_buffer_medium">Среден (балансиран - стандардно)</string>
+    <string name="settings_buffer_large">Голем (висока издржливост / слаба врска)</string>
 </resources>

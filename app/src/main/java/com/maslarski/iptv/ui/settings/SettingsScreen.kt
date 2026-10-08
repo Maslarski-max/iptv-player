@@ -59,6 +59,7 @@ import com.maslarski.iptv.data.repository.ContentRepository
 import com.maslarski.iptv.data.repository.PlaylistRepository
 import com.maslarski.iptv.data.settings.AppSettings
 import com.maslarski.iptv.data.settings.AspectRatioMode
+import com.maslarski.iptv.data.settings.BufferSizeProfile
 import com.maslarski.iptv.data.settings.DecoderMode
 import com.maslarski.iptv.data.settings.RefreshMode
 import com.maslarski.iptv.data.settings.SettingsRepository
@@ -163,6 +164,7 @@ class SettingsViewModel @Inject constructor(
     fun deletePlaylist(id: Long) = viewModelScope.launch { playlists.delete(id) }
     fun setVideoDecoder(mode: DecoderMode) = viewModelScope.launch { settingsRepo.setVideoDecoder(mode) }
     fun setAudioDecoder(mode: DecoderMode) = viewModelScope.launch { settingsRepo.setAudioDecoder(mode) }
+    fun setBufferProfile(profile: BufferSizeProfile) = viewModelScope.launch { settingsRepo.setBufferProfile(profile) }
     fun setAspect(mode: AspectRatioMode) = viewModelScope.launch { settingsRepo.setAspectRatio(mode) }
     fun setPin(pin: String) = viewModelScope.launch { settingsRepo.setPin(pin) }
     fun setTmdbApiKey(key: String) = viewModelScope.launch { settingsRepo.setTmdbApiKey(key) }
@@ -271,6 +273,24 @@ fun SettingsScreen(
             DecoderPicker(stringResource(R.string.settings_video_decoder), state.settings.videoDecoder, viewModel::setVideoDecoder)
             Spacer(Modifier.height(12.dp))
             DecoderPicker(stringResource(R.string.settings_audio_decoder), state.settings.audioDecoder, viewModel::setAudioDecoder)
+            Spacer(Modifier.height(28.dp))
+        }
+
+        item { SectionHeader(stringResource(R.string.settings_buffer_profile)); Spacer(Modifier.height(8.dp)) }
+        item {
+            Text(stringResource(R.string.settings_buffer_profile_body), style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
+            Spacer(Modifier.height(12.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(BufferSizeProfile.entries.size) { i ->
+                    val profile = BufferSizeProfile.entries[i]
+                    val label = when (profile) {
+                        BufferSizeProfile.SMALL -> R.string.settings_buffer_small
+                        BufferSizeProfile.MEDIUM -> R.string.settings_buffer_medium
+                        BufferSizeProfile.LARGE -> R.string.settings_buffer_large
+                    }
+                    Pill(stringResource(label), state.settings.bufferProfile == profile) { viewModel.setBufferProfile(profile) }
+                }
+            }
             Spacer(Modifier.height(28.dp))
         }
 
