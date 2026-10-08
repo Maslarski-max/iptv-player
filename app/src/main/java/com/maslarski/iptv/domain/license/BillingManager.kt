@@ -200,17 +200,15 @@ class BillingManager @Inject constructor(
             _state.value = _state.value.copy(busy = false)
             return
         }
+        license.activatePurchase(purchase.purchaseToken)
+        _state.value = _state.value.copy(owned = true, busy = false, error = null)
         if (!purchase.isAcknowledged) {
             val ack = AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()
             val ackResult = suspendCancellableCoroutine<BillingResult> { cont -> client.acknowledgePurchase(ack) { cont.resume(it) } }
-            if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) {
-                logFailure("acknowledgePurchase", ackResult)
-                _state.value = _state.value.copy(busy = false, error = ackResult.debugMessage)
-                return
-            }
+            // Entitlement is already granted; an unacknowledged purchase is returned again by queryPurchases
+            // on the next refresh, which retries the acknowledgement.
+            if (ackResult.responseCode != BillingClient.BillingResponseCode.OK) logFailure("acknowledgePurchase", ackResult)
         }
-        license.activatePurchase(purchase.purchaseToken)
-        _state.value = _state.value.copy(owned = true, busy = false, error = null)
     }
 
     companion object {
