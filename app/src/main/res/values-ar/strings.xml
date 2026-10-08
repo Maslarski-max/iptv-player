@@ -225,6 +225,7 @@
     <string name="favorites_hint">اضغط مطولًا على بطاقة لإزالتها من المفضلة. اضغط OK على بطاقة خافتة لإعادة إضافتها.</string>
     <string name="player_channel_list">القنوات</string>
     <string name="player_settings">إعدادات المشغّل</string>
+    <string name="player_pip">صورة داخل صورة</string>
     <string name="playlist_delete_title">حذف ”%1$s“؟</string>
     <string name="playlist_delete_body">سيتم حذف جميع القنوات والأفلام والمسلسلات وبيانات دليل البرامج والمفضلة المخزنة لهذه القائمة.</string>
     <string name="settings_refresh_mode">تحديث القوائم</string>

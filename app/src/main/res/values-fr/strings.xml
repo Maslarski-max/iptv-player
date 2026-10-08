@@ -225,6 +225,7 @@
     <string name="favorites_hint">Appuyez longuement sur une carte pour la retirer des favoris. Appuyez sur OK sur une carte grisée pour la rajouter.</string>
     <string name="player_channel_list">Chaînes</string>
     <string name="player_settings">Paramètres du lecteur</string>
+    <string name="player_pip">Image dans l\'image</string>
     <string name="playlist_delete_title">Supprimer « %1$s » ?</string>
     <string name="playlist_delete_body">Toutes les chaînes, films, séries, données EPG et favoris en cache de cette playlist seront supprimés.</string>
     <string name="settings_refresh_mode">Actualisation des playlists</string>

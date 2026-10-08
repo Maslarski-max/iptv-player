@@ -225,6 +225,7 @@
     <string name="favorites_hint">Halte eine Karte gedrückt, um sie aus den Favoriten zu entfernen. Drücke OK auf einer abgedunkelten Karte, um sie wieder hinzuzufügen.</string>
     <string name="player_channel_list">Sender</string>
     <string name="player_settings">Player-Einstellungen</string>
+    <string name="player_pip">Bild-im-Bild</string>
     <string name="playlist_delete_title">„%1$s“ löschen?</string>
     <string name="playlist_delete_body">Alle zwischengespeicherten Sender, Filme, Serien, EPG-Daten und Favoriten dieser Playlist werden entfernt.</string>
     <string name="settings_refresh_mode">Playlist-Aktualisierung</string>

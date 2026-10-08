@@ -2,7 +2,9 @@ package com.maslarski.iptv.ui.player
 
 import android.net.Uri
 import android.view.KeyEvent
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -43,6 +45,7 @@ import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Settings
@@ -82,12 +85,19 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -122,6 +132,10 @@ private val DPAD_KEYS = setOf(Key.DirectionUp, Key.DirectionDown, Key.DirectionL
 fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val guide by viewModel.guide.collectAsStateWithLifecycle()
+    val pip = rememberPictureInPicture(state.isPlaying, state.videoAspect)
+    val activity = LocalActivity.current as? ComponentActivity
+    val view = LocalView.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var reminderSelection by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
     var controlsVisible by rememberSaveable { mutableStateOf(false) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -132,8 +146,47 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     val rootFocus = remember { FocusRequester() }
 
     var bannerVisible by remember { mutableStateOf(false) }
+    var pausedByStop by remember { mutableStateOf(false) }
 
     fun poke() { lastInteraction = System.currentTimeMillis(); controlsVisible = true }
+
+    LaunchedEffect(pip.inPip) {
+        if (pip.inPip) {
+            panel = Panel.NONE
+            controlsVisible = false
+            bannerVisible = false
+        }
+    }
+
+    DisposableEffect(view) {
+        if (activity == null) {
+            onDispose {}
+        } else {
+            val insetsController = WindowCompat.getInsetsController(activity.window, view)
+            insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            insetsController.hide(WindowInsetsCompat.Type.systemBars())
+            onDispose { insetsController.show(WindowInsetsCompat.Type.systemBars()) }
+        }
+    }
+
+    val latestIsPlaying by rememberUpdatedState(state.isPlaying)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> if (latestIsPlaying) {
+                    viewModel.pause()
+                    pausedByStop = true
+                }
+                Lifecycle.Event.ON_START -> if (pausedByStop) {
+                    viewModel.play()
+                    pausedByStop = false
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // Zapping shows only a short channel banner; the control row stays hidden.
     LaunchedEffect(state.currentChannelId) {
@@ -262,10 +315,10 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             },
         )
 
-        if (state.isBuffering && state.error == null) {
+        if (state.isBuffering && state.error == null && !pip.inPip) {
             CircularProgressIndicator(Modifier.align(Alignment.Center).size(56.dp), color = Palette.NeonPurple, strokeWidth = 3.dp)
         }
-        if (state.error != null) {
+        if (state.error != null && !pip.inPip) {
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(Modifier.size(40.dp), color = Palette.Live, strokeWidth = 3.dp)
                 Spacer(Modifier.height(12.dp))
@@ -278,7 +331,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
         }
 
         AnimatedVisibility(
-            visible = controlsVisible && panel == Panel.NONE,
+            visible = controlsVisible && panel == Panel.NONE && !pip.inPip,
             enter = fadeIn() + slideInVertically { it / 3 },
             exit = fadeOut() + slideOutVertically { it / 3 },
             modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing),
@@ -294,11 +347,13 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 onSubtitles = { panel = Panel.SUBTITLES; poke() },
                 onNext = { if (state.isLive) viewModel.channelUp() else viewModel.playNextEpisode(); poke() },
                 onChannels = { panel = Panel.GUIDE; poke() },
+                pipSupported = pip.supported,
+                onPip = { pip.enter() },
                 onSettings = { panel = Panel.SETTINGS; poke() },
             )
         }
 
-        AnimatedVisibility(visible = (controlsVisible || bannerVisible) && panel == Panel.NONE, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing)) {
+        AnimatedVisibility(visible = (controlsVisible || bannerVisible) && panel == Panel.NONE && !pip.inPip, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(WindowInsets.safeDrawing)) {
             Column(Modifier.fillMaxWidth().background(Palette.HeroTopScrim).padding(32.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (state.channelNumber != null) {
@@ -385,6 +440,8 @@ private fun Controls(
     onSubtitles: () -> Unit,
     onNext: () -> Unit,
     onChannels: () -> Unit,
+    pipSupported: Boolean,
+    onPip: () -> Unit,
     onSettings: () -> Unit,
 ) {
     val timelineFocus = remember { FocusRequester() }
@@ -459,6 +516,10 @@ private fun Controls(
             Spacer(Modifier.width(12.dp))
             ControlButton(Icons.Filled.AspectRatio, stringResource(state.aspect.label()), onAspect)
             Spacer(Modifier.width(12.dp))
+            if (pipSupported) {
+                ControlButton(Icons.Filled.PictureInPictureAlt, stringResource(R.string.player_pip), onPip)
+                Spacer(Modifier.width(12.dp))
+            }
             ControlButton(Icons.Filled.Settings, stringResource(R.string.player_settings), onSettings)
         }
     }

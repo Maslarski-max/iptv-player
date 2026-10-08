@@ -2,6 +2,7 @@ package com.maslarski.iptv.ui.player
 
 import android.content.Context
 import android.net.Uri
+import android.util.Rational
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +14,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackGroup
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -64,6 +66,7 @@ import okhttp3.OkHttpClient
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 data class TrackOption(val group: TrackGroup, val index: Int, val label: String, val selected: Boolean)
 
@@ -81,6 +84,7 @@ data class PlayerUiState(
     val error: String? = null,
     val reconnectAttempt: Int = 0,
     val aspect: AspectRatioMode = AspectRatioMode.FIT,
+    val videoAspect: Rational? = null,
     val audioTracks: List<TrackOption> = emptyList(),
     val subtitleTracks: List<TrackOption> = emptyList(),
     val subtitlesEnabled: Boolean = true,
@@ -240,6 +244,14 @@ class PlayerViewModel @Inject constructor(
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) { _state.update { it.copy(isPlaying = isPlaying) } }
+
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+            if (videoSize.width > 0 && videoSize.height > 0) {
+                _state.update {
+                    it.copy(videoAspect = Rational((videoSize.width * videoSize.pixelWidthHeightRatio).roundToInt(), videoSize.height))
+                }
+            }
+        }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             _state.update { it.copy(isPaused = !playWhenReady) }

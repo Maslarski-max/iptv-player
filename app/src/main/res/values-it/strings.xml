@@ -225,6 +225,7 @@
     <string name="favorites_hint">Tieni premuta una scheda per rimuoverla dai preferiti. Premi OK su una scheda attenuata per aggiungerla di nuovo.</string>
     <string name="player_channel_list">Canali</string>
     <string name="player_settings">Impostazioni player</string>
+    <string name="player_pip">Picture-in-picture</string>
     <string name="playlist_delete_title">Eliminare “%1$s”?</string>
     <string name="playlist_delete_body">Tutti i canali, film, serie, dati EPG e preferiti in cache di questa playlist verranno rimossi.</string>
     <string name="settings_refresh_mode">Aggiornamento playlist</string>
