@@ -47,6 +47,13 @@ import androidx.activity.compose.LocalActivity
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,7 +63,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -152,6 +162,18 @@ fun IptvApp() {
         }
     }
 
+    // Cold start: put the D-pad cursor on the Home rail item so the active node is visible immediately.
+    val homeFocus = remember { FocusRequester() }
+    var bootFocusDone by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(showNav, isCompact, locked, license == null) {
+        if (bootFocusDone || isCompact || !showNav || locked || license == null) return@LaunchedEffect
+        bootFocusDone = true
+        repeat(10) {
+            withFrameNanos {}
+            if (runCatching { homeFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+        }
+    }
+
     fun navigateTop(route: Route) {
         nav.navigate(route) {
             popUpTo(Route.Home) { saveState = true }
@@ -184,7 +206,7 @@ fun IptvApp() {
         } else {
             Row(Modifier.fillMaxSize()) {
                 AnimatedVisibility(showNav, enter = slideInHorizontally { -it } + fadeIn(), exit = slideOutHorizontally { -it } + fadeOut()) {
-                    SideRail(destination?.let { d -> NavItems.firstOrNull { d.hasRoute(it.route::class) } }, ::navigateTop)
+                    SideRail(destination?.let { d -> NavItems.firstOrNull { d.hasRoute(it.route::class) } }, ::navigateTop, homeFocus)
                 }
                 content(Modifier.weight(1f))
             }
@@ -269,7 +291,7 @@ private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
 }
 
 @Composable
-private fun SideRail(selected: NavItem?, onSelect: (Route) -> Unit) {
+private fun SideRail(selected: NavItem?, onSelect: (Route) -> Unit, homeFocus: FocusRequester) {
     Column(
         Modifier.fillMaxHeight().width(96.dp).background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing)
             .verticalScroll(rememberScrollState()).padding(top = TvOverscanTop, bottom = 12.dp).zIndex(1f),
@@ -280,17 +302,19 @@ private fun SideRail(selected: NavItem?, onSelect: (Route) -> Unit) {
             Icon(Icons.Filled.LiveTv, null, tint = Color.White)
         }
         Spacer(Modifier.height(8.dp))
-        NavItems.forEach { item -> RailItem(item, item == selected) { onSelect(item.route) } }
+        NavItems.forEach { item ->
+            RailItem(item, item == selected, if (item.route == Route.Home) Modifier.focusRequester(homeFocus) else Modifier) { onSelect(item.route) }
+        }
     }
 }
 
 @Composable
-private fun RailItem(item: NavItem, selected: Boolean, onClick: () -> Unit) {
+private fun RailItem(item: NavItem, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val interaction = rememberInteractionSource()
     val focused by rememberFocusState(interaction)
     val shape = RoundedCornerShape(14.dp)
     Column(
-        Modifier.width(80.dp)
+        modifier.width(80.dp)
             .focusGlow(interaction, shape, focusedScale = 1.06f, borderWidth = 2.dp)
             .clip(shape)
             .background(if (focused) Palette.NeonPurple else if (selected) Palette.SurfaceHighest else Color.Transparent)
@@ -307,20 +331,28 @@ private fun RailItem(item: NavItem, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun BottomBar(selected: NavItem?, onSelect: (Route) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 8.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().background(Palette.Surface).windowInsetsPadding(WindowInsets.safeDrawing).padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         NavItems.filter { it.route != Route.Favorites }.forEach { item ->
             val interaction = rememberInteractionSource()
             val isSel = item == selected
             Column(
-                Modifier.clip(CircleShape)
+                Modifier.weight(1f).clip(CircleShape)
                     .clickable(interactionSource = interaction, indication = null) { onSelect(item.route) }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 2.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(item.icon, null, tint = if (isSel) Palette.NeonPurple else Palette.Muted, modifier = Modifier.size(22.dp))
-                Text(stringResource(item.label), style = MaterialTheme.typography.labelSmall, color = if (isSel) Palette.NeonPurple else Palette.Muted)
+                Text(
+                    stringResource(item.label),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isSel) Palette.NeonPurple else Palette.Muted,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    autoSize = TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = MaterialTheme.typography.labelSmall.fontSize, stepSize = 0.5.sp),
+                )
             }
         }
     }

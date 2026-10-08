@@ -268,4 +268,5 @@
     <string name="settings_buffer_small">Klein (schnelles Zappen)</string>
     <string name="settings_buffer_medium">Mittel (ausgewogen - Standard)</string>
     <string name="settings_buffer_large">Groß (hohe Reserve / schlechte Verbindungen)</string>
+    <string name="settings_buffer_extra_large">Extragroß (maximale Reserve / schwache Verbindungen)</string>
 </resources>

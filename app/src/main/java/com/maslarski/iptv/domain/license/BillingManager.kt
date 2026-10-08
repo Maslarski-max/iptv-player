@@ -2,6 +2,7 @@ package com.maslarski.iptv.domain.license
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
@@ -14,6 +15,7 @@ import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -64,14 +66,14 @@ class BillingManager @Inject constructor(
         client.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    scope.launch { refresh() }
+                    scope.launch { guarded("refresh") { refresh() } }
                 } else {
-                    _state.value = _state.value.copy(available = false)
+                    _state.value = _state.value.copy(available = false, busy = false)
                 }
             }
 
             override fun onBillingServiceDisconnected() {
-                _state.value = _state.value.copy(available = false)
+                _state.value = _state.value.copy(available = false, busy = false)
             }
         })
     }
@@ -104,8 +106,19 @@ class BillingManager @Inject constructor(
         purchases.forEach { handle(it) }
     }
 
-    /** Launches the Play purchase sheet; returns false when the store is not available. */
+    /**
+     * Launches the Play purchase sheet; returns false when the store is not available or the host activity
+     * can no longer start the Play proxy activity. Play's `ProxyBillingActivity` crashes with an NPE when it
+     * is handed a null PendingIntent, which happens if the flow is launched from a finishing/destroyed
+     * activity, before the client is connected, or while another purchase is in flight.
+     */
     fun purchase(activity: Activity): Boolean {
+        if (activity.isFinishing || activity.isDestroyed || activity.window == null) return false
+        if (!client.isReady) {
+            connect()
+            return false
+        }
+        if (_state.value.busy) return false
         val product = details ?: return false
         val params = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(
@@ -113,7 +126,13 @@ class BillingManager @Inject constructor(
             )
             .build()
         _state.value = _state.value.copy(busy = true, error = null)
-        val result = client.launchBillingFlow(activity, params)
+        val result = try {
+            client.launchBillingFlow(activity, params)
+        } catch (e: RuntimeException) {
+            reportBillingFailure("launchBillingFlow", e)
+            _state.value = _state.value.copy(busy = false, error = e.message)
+            return false
+        }
         if (result.responseCode != BillingClient.BillingResponseCode.OK) {
             _state.value = _state.value.copy(busy = false, error = result.debugMessage)
             return false
@@ -122,15 +141,38 @@ class BillingManager @Inject constructor(
     }
 
     override fun onPurchasesUpdated(result: BillingResult, purchases: List<Purchase>?) {
-        when (result.responseCode) {
-            BillingClient.BillingResponseCode.OK -> purchases.orEmpty().forEach { scope.launch { handle(it) } }
-            BillingClient.BillingResponseCode.USER_CANCELED -> _state.value = _state.value.copy(busy = false)
-            else -> _state.value = _state.value.copy(busy = false, error = result.debugMessage)
+        try {
+            when (result.responseCode) {
+                BillingClient.BillingResponseCode.OK -> {
+                    val list = purchases.orEmpty()
+                    if (list.isEmpty()) _state.value = _state.value.copy(busy = false)
+                    list.forEach { purchase -> scope.launch { guarded("handlePurchase") { handle(purchase) } } }
+                }
+                BillingClient.BillingResponseCode.USER_CANCELED -> _state.value = _state.value.copy(busy = false)
+                else -> _state.value = _state.value.copy(busy = false, error = result.debugMessage)
+            }
+        } catch (e: RuntimeException) {
+            reportBillingFailure("onPurchasesUpdated", e)
+            _state.value = _state.value.copy(busy = false, error = e.message)
         }
     }
 
+    private suspend fun guarded(stage: String, block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: RuntimeException) {
+            reportBillingFailure(stage, e)
+            _state.value = _state.value.copy(busy = false, error = e.message)
+        }
+    }
+
+    private fun reportBillingFailure(stage: String, e: RuntimeException) {
+        Log.w(TAG, "Billing $stage failed", e)
+        Sentry.captureException(e)
+    }
+
     private suspend fun handle(purchase: Purchase) {
-        if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED || LIFETIME_PRODUCT_ID !in purchase.products) {
+        if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED || purchase.products.none { it in LIFETIME_PRODUCT_IDS }) {
             _state.value = _state.value.copy(busy = false)
             return
         }
@@ -143,8 +185,11 @@ class BillingManager @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "BillingManager"
         /** Play Console in-app product id for the one-time lifetime unlock. */
-        const val LIFETIME_PRODUCT_ID = "maxtv_lifetime"
+        const val LIFETIME_PRODUCT_ID = "maxtv_lifetime_unlock"
+        /** Product ids whose purchase unlocks the app, including ids sold by earlier releases. */
+        val LIFETIME_PRODUCT_IDS = setOf(LIFETIME_PRODUCT_ID, "maxtv_lifetime")
         const val FALLBACK_PRICE = "€9.99"
     }
 }

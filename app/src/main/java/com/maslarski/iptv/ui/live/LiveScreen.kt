@@ -14,6 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -59,6 +61,7 @@ data class LiveUiState(
     val lockedCategoryIds: Set<String> = emptySet(),
     val pendingUnlockCategoryId: String? = null,
     val reminders: Map<String, ReminderEntity> = emptyMap(),
+    val lastPlayedChannelId: String? = null,
     val loading: Boolean = true,
 )
 
@@ -73,6 +76,7 @@ class LiveTvViewModel @Inject constructor(
 
     private val selected = MutableStateFlow<String?>(null)
     private val pendingUnlock = MutableStateFlow<String?>(null)
+    private val lastPlayed = MutableStateFlow<String?>(null)
     private val active = playlists.activePlaylist
 
     private val locked: Flow<Set<String>> = active.flatMapLatest { p ->
@@ -97,8 +101,8 @@ class LiveTvViewModel @Inject constructor(
     val state: StateFlow<LiveUiState> = combine(active, categories, selected, channels, locked) { p, cats, sel, list, lockedIds ->
         LiveUiState(playlistId = p?.id, categories = cats, selectedCategoryId = sel, channels = list, lockedCategoryIds = lockedIds, loading = p == null)
     }.let { base ->
-        combine(base, nowPlaying, pendingUnlock, reminders.upcoming) { s, epg, pending, upcoming ->
-            s.copy(nowPlaying = epg, pendingUnlockCategoryId = pending, reminders = upcoming.associateBy { reminderKey(it.epgChannelId, it.startMillis) })
+        combine(base, nowPlaying, pendingUnlock, reminders.upcoming, lastPlayed) { s, epg, pending, upcoming, last ->
+            s.copy(nowPlaying = epg, pendingUnlockCategoryId = pending, reminders = upcoming.associateBy { reminderKey(it.epgChannelId, it.startMillis) }, lastPlayedChannelId = last)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LiveUiState())
 
@@ -106,6 +110,8 @@ class LiveTvViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         return content.programsForChannel(epgChannelId, now - EPG_PAST_MS, now + EPG_FUTURE_MS)
     }
+
+    fun markPlayed(channel: Channel) { lastPlayed.value = channel.id }
 
     fun selectCategory(id: String?) {
         if (id != null && id in state.value.lockedCategoryIds) pendingUnlock.value = id else selected.value = id
@@ -145,6 +151,14 @@ class LiveTvViewModel @Inject constructor(
 @Composable
 fun LiveScreen(isCompact: Boolean, onPlay: (Channel) -> Unit, viewModel: LiveTvViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val play: (Channel) -> Unit = { viewModel.markPlayed(it); onPlay(it) }
+    var restoreFocus by remember { mutableStateOf(true) }
+    LaunchedEffect(state.channels.isNotEmpty()) {
+        if (state.channels.isNotEmpty()) {
+            repeat(3) { withFrameNanos {} }
+            restoreFocus = false
+        }
+    }
     var pinError by remember { mutableStateOf<String?>(null) }
     var selection by remember { mutableStateOf<Pair<Channel, EpgProgram>?>(null) }
     val wrongPin = stringResource(R.string.pin_wrong)
@@ -168,12 +182,12 @@ fun LiveScreen(isCompact: Boolean, onPlay: (Channel) -> Unit, viewModel: LiveTvV
             onRemind = { viewModel.setReminder(channel, program, autoSwitch = false); selection = null },
             onAutoSwitch = { viewModel.setReminder(channel, program, autoSwitch = true); selection = null },
             onRemove = { viewModel.removeReminder(it); selection = null },
-            onWatchNow = { onPlay(channel); selection = null },
+            onWatchNow = { play(channel); selection = null },
             onDismiss = { selection = null },
         )
     }
     val onProgramClick: (Channel, EpgProgram) -> Unit = { channel, program ->
-        if (program.startMillis > System.currentTimeMillis()) selection = channel to program else onPlay(channel)
+        if (program.startMillis > System.currentTimeMillis()) selection = channel to program else play(channel)
     }
 
     when {
@@ -187,7 +201,7 @@ fun LiveScreen(isCompact: Boolean, onPlay: (Channel) -> Unit, viewModel: LiveTvV
                     Pill(c.name, c.id == state.selectedCategoryId, locked = c.id in state.lockedCategoryIds) { viewModel.selectCategory(c.id) }
                 }
             }
-            CompactChannelList(state.channels, state.nowPlaying, onPlay, Modifier.fillMaxWidth().padding(horizontal = 20.dp), onToggleFavorite = viewModel::toggleFavorite)
+            CompactChannelList(state.channels, state.nowPlaying, play, Modifier.fillMaxWidth().padding(horizontal = 20.dp), onToggleFavorite = viewModel::toggleFavorite)
         }
         else -> LiveGuideColumns(
             categories = state.categories,
@@ -197,8 +211,9 @@ fun LiveScreen(isCompact: Boolean, onPlay: (Channel) -> Unit, viewModel: LiveTvV
             onSelectCategory = viewModel::selectCategory,
             channels = state.channels,
             nowPlaying = state.nowPlaying,
-            currentChannelId = null,
-            onPlay = onPlay,
+            currentChannelId = state.lastPlayedChannelId,
+            focusCurrentOnShow = restoreFocus,
+            onPlay = play,
             programsFor = viewModel::programsFor,
             reminders = state.reminders,
             onProgramClick = onProgramClick,
