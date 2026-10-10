@@ -90,16 +90,17 @@ class BillingManager @Inject constructor(
         }
         client.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
-                if (attempt != setupAttempt) {
-                    Log.i(TAG, "Billing setup callback ignored: stale attempt $attempt")
-                    return
-                }
-                setupTimeout?.cancel()
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    setupTimeout?.cancel()
                     setupState = SetupState.CONNECTED
                     Log.i(TAG, "Billing setup finished OK (response=${result.responseCode})")
-                    refreshJob = scope.launch { guarded("refresh") { refresh() } }
+                    refreshIfNeeded()
                 } else {
+                    if (attempt != setupAttempt || setupState == SetupState.CONNECTED) {
+                        Log.i(TAG, "Billing setup callback ignored: stale attempt $attempt")
+                        return
+                    }
+                    setupTimeout?.cancel()
                     setupState = SetupState.IDLE
                     logFailure("setup", result)
                     _state.value = _state.value.copy(available = false, busy = false)
