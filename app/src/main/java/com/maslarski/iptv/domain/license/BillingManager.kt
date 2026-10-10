@@ -94,7 +94,9 @@ class BillingManager @Inject constructor(
                     setupTimeout?.cancel()
                     setupState = SetupState.CONNECTED
                     Log.i(TAG, "Billing setup finished OK (response=${result.responseCode})")
-                    refreshIfNeeded()
+                    if (refreshJob?.isActive != true) {
+                        refreshJob = scope.launch { guarded("refresh") { refresh() } }
+                    }
                 } else {
                     if (attempt != setupAttempt || setupState == SetupState.CONNECTED) {
                         Log.i(TAG, "Billing setup callback ignored: stale attempt $attempt")
