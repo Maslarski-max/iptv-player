@@ -146,7 +146,6 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     val rootFocus = remember { FocusRequester() }
 
     var bannerVisible by remember { mutableStateOf(false) }
-    var pausedByStop by remember { mutableStateOf(false) }
 
     fun poke() { lastInteraction = System.currentTimeMillis(); controlsVisible = true }
 
@@ -178,14 +177,9 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_STOP -> if (viewModel.player.playWhenReady) {
-                    viewModel.pause()
-                    pausedByStop = true
-                }
-                Lifecycle.Event.ON_START -> if (pausedByStop) {
-                    viewModel.play()
-                    pausedByStop = false
-                }
+                Lifecycle.Event.ON_STOP ->
+                    if (activity?.isChangingConfigurations != true) viewModel.onHostStopped()
+                Lifecycle.Event.ON_START -> viewModel.onHostStarted()
                 else -> Unit
             }
         }

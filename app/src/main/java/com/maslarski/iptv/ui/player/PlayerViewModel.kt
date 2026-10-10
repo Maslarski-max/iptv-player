@@ -237,6 +237,7 @@ class PlayerViewModel @Inject constructor(
     private var currentEpisode: Episode? = null
     private var currentContentId: String = route.contentId
     private var reconnectJob: Job? = null
+    private var pausedByStop = false
     private var readySinceMillis = 0L
     private var progressJob: Job? = null
     private var epgJob: Job? = null
@@ -475,6 +476,22 @@ class PlayerViewModel @Inject constructor(
     fun togglePlayPause() { if (player.playWhenReady) player.pause() else player.play() }
     fun play() = player.play()
     fun pause() = player.pause()
+
+    // Pause while the host Activity is stopped and resume when it starts again. Kept in the
+    // ViewModel so an Activity relaunch (configuration change) cannot leave playback paused.
+    fun onHostStopped() {
+        if (player.playWhenReady) {
+            player.pause()
+            pausedByStop = true
+        }
+    }
+
+    fun onHostStarted() {
+        if (pausedByStop) {
+            pausedByStop = false
+            player.play()
+        }
+    }
     fun seekForward() { if (!_state.value.isLive) player.seekForward() }
     fun seekBack() { if (!_state.value.isLive) player.seekBack() }
     fun seekTo(fraction: Float) {
