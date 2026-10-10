@@ -2,6 +2,7 @@ package com.maslarski.iptv.ui.player
 
 import android.content.Context
 import android.net.Uri
+import android.util.Rational
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +14,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackGroup
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -64,6 +66,7 @@ import okhttp3.OkHttpClient
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 data class TrackOption(val group: TrackGroup, val index: Int, val label: String, val selected: Boolean)
 
@@ -81,6 +84,7 @@ data class PlayerUiState(
     val error: String? = null,
     val reconnectAttempt: Int = 0,
     val aspect: AspectRatioMode = AspectRatioMode.FIT,
+    val videoAspect: Rational? = null,
     val audioTracks: List<TrackOption> = emptyList(),
     val subtitleTracks: List<TrackOption> = emptyList(),
     val subtitlesEnabled: Boolean = true,
@@ -233,6 +237,7 @@ class PlayerViewModel @Inject constructor(
     private var currentEpisode: Episode? = null
     private var currentContentId: String = route.contentId
     private var reconnectJob: Job? = null
+    private var pausedByStop = false
     private var readySinceMillis = 0L
     private var progressJob: Job? = null
     private var epgJob: Job? = null
@@ -240,6 +245,18 @@ class PlayerViewModel @Inject constructor(
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) { _state.update { it.copy(isPlaying = isPlaying) } }
+
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+            _state.update {
+                it.copy(
+                    videoAspect = if (videoSize.width > 0 && videoSize.height > 0) {
+                        Rational((videoSize.width * videoSize.pixelWidthHeightRatio).roundToInt(), videoSize.height)
+                    } else {
+                        null
+                    },
+                )
+            }
+        }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             _state.update { it.copy(isPaused = !playWhenReady) }
@@ -372,7 +389,7 @@ class PlayerViewModel @Inject constructor(
     private fun prepare(url: String, live: Boolean, startPosition: Long = 0L) {
         reconnectJob?.cancel()
         readySinceMillis = 0L
-        _state.update { it.copy(reconnectAttempt = 0) }
+        _state.update { it.copy(reconnectAttempt = 0, videoAspect = null) }
         loadControl.setLive(live)
         val builder = MediaItem.Builder().setUri(url)
         if (live) builder.setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setMaxPlaybackSpeed(1.02f).build())
@@ -459,6 +476,22 @@ class PlayerViewModel @Inject constructor(
     fun togglePlayPause() { if (player.playWhenReady) player.pause() else player.play() }
     fun play() = player.play()
     fun pause() = player.pause()
+
+    // Pause while the host Activity is stopped and resume when it starts again. Kept in the
+    // ViewModel so an Activity relaunch (configuration change) cannot leave playback paused.
+    fun onHostStopped() {
+        if (player.playWhenReady) {
+            player.pause()
+            pausedByStop = true
+        }
+    }
+
+    fun onHostStarted() {
+        if (pausedByStop) {
+            pausedByStop = false
+            player.play()
+        }
+    }
     fun seekForward() { if (!_state.value.isLive) player.seekForward() }
     fun seekBack() { if (!_state.value.isLive) player.seekBack() }
     fun seekTo(fraction: Float) {

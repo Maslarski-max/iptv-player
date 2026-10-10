@@ -225,6 +225,7 @@
     <string name="favorites_hint">Долго притиснете картичка за да ја отстраните од омилени. Притиснете OK на затемнета картичка за повторно да ја додадете.</string>
     <string name="player_channel_list">Канали</string>
     <string name="player_settings">Поставки на плеерот</string>
+    <string name="player_pip">Слика во слика</string>
     <string name="playlist_delete_title">Да се избрише „%1$s“?</string>
     <string name="playlist_delete_body">Сите кеширани канали, филмови, серии, EPG податоци и омилени за оваа листа ќе бидат отстранети.</string>
     <string name="settings_refresh_mode">Освежување на листи</string>

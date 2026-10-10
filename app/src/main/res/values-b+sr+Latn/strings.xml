@@ -225,6 +225,7 @@
     <string name="favorites_hint">Dugo pritisnite karticu da je uklonite iz omiljenih. Pritisnite OK na zatamnjenoj kartici da je ponovo dodate.</string>
     <string name="player_channel_list">Kanali</string>
     <string name="player_settings">Podešavanja plejera</string>
+    <string name="player_pip">Slika u slici</string>
     <string name="playlist_delete_title">Izbrisati „%1$s“?</string>
     <string name="playlist_delete_body">Svi keširani kanali, filmovi, serije, EPG podaci i omiljeno za ovu plejlistu biće uklonjeni.</string>
     <string name="settings_refresh_mode">Osvežavanje plejlista</string>
