@@ -266,6 +266,7 @@
     <!-- Player overlays -->
     <string name="player_channel_list">Channels</string>
     <string name="player_settings">Player settings</string>
+    <string name="player_pip">Picture-in-picture</string>
 
     <!-- Playlists / refresh -->
     <string name="playlist_delete_title">Delete “%1$s”?</string>

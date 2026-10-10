@@ -225,6 +225,7 @@
     <string name="favorites_hint">Bir kartı favorilerden kaldırmak için uzun basın. Yeniden eklemek için soluk karta OK’a basın.</string>
     <string name="player_channel_list">Kanallar</string>
     <string name="player_settings">Oynatıcı ayarları</string>
+    <string name="player_pip">Pencere içinde pencere</string>
     <string name="playlist_delete_title">“%1$s” silinsin mi?</string>
     <string name="playlist_delete_body">Bu listeye ait önbellekteki tüm kanallar, filmler, diziler, EPG verileri ve favoriler kaldırılacak.</string>
     <string name="settings_refresh_mode">Liste yenileme</string>

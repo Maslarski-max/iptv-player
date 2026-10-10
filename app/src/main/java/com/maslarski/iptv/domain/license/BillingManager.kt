@@ -63,33 +63,68 @@ class BillingManager @Inject constructor(
         .enableAutoServiceReconnection()
         .build()
 
+    private enum class SetupState { IDLE, CONNECTING, CONNECTED }
+
+    @Volatile private var setupState = SetupState.IDLE
+    @Volatile private var setupAttempt = 0
     private var setupTimeout: Job? = null
+    @Volatile private var refreshJob: Job? = null
 
     fun connect() {
-        if (client.isReady) return
+        if (setupState != SetupState.IDLE) {
+            if (setupState == SetupState.CONNECTED) refreshIfNeeded()
+            Log.i(TAG, "Billing connect skipped: setup $setupState")
+            return
+        }
+        val attempt = ++setupAttempt
+        setupState = SetupState.CONNECTING
+        Log.i(TAG, "Billing connect: starting setup")
         setupTimeout?.cancel()
         setupTimeout = scope.launch {
             delay(SETUP_TIMEOUT_MS)
+            if (attempt != setupAttempt) return@launch
+            setupAttempt++
             Log.w(TAG, "Billing setup timed out after ${SETUP_TIMEOUT_MS}ms without onBillingSetupFinished")
+            setupState = SetupState.IDLE
             _state.value = _state.value.copy(available = false, busy = false)
         }
         client.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
-                setupTimeout?.cancel()
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                    setupTimeout?.cancel()
+                    setupState = SetupState.CONNECTED
                     Log.i(TAG, "Billing setup finished OK (response=${result.responseCode})")
-                    scope.launch { guarded("refresh") { refresh() } }
+                    if (refreshJob?.isActive != true) {
+                        refreshJob = scope.launch { guarded("refresh") { refresh() } }
+                    }
                 } else {
+                    if (attempt != setupAttempt || setupState == SetupState.CONNECTED) {
+                        Log.i(TAG, "Billing setup callback ignored: stale attempt $attempt")
+                        return
+                    }
+                    setupTimeout?.cancel()
+                    setupState = SetupState.IDLE
                     logFailure("setup", result)
                     _state.value = _state.value.copy(available = false, busy = false)
                 }
             }
 
             override fun onBillingServiceDisconnected() {
+                if (attempt != setupAttempt) {
+                    Log.i(TAG, "Billing setup callback ignored: stale attempt $attempt")
+                    return
+                }
+                setupTimeout?.cancel()
+                setupState = SetupState.IDLE
                 Log.w(TAG, "Billing service disconnected")
                 _state.value = _state.value.copy(available = false, busy = false)
             }
         })
+    }
+
+    private fun refreshIfNeeded() {
+        if (setupState != SetupState.CONNECTED || details != null || refreshJob?.isActive == true) return
+        refreshJob = scope.launch { guarded("refresh") { refresh() } }
     }
 
     private suspend fun refresh() {
@@ -137,12 +172,15 @@ class BillingManager @Inject constructor(
      */
     fun purchase(activity: Activity): Boolean {
         if (activity.isFinishing || activity.isDestroyed || activity.window == null) return false
-        if (!client.isReady) {
+        if (setupState != SetupState.CONNECTED) {
             connect()
             return false
         }
         if (_state.value.busy) return false
-        val product = details ?: return false
+        val product = details ?: run {
+            refreshIfNeeded()
+            return false
+        }
         val params = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(
                 listOf(BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(product).build()),

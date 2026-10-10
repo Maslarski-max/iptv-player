@@ -225,6 +225,7 @@
     <string name="favorites_hint">Mantén pulsada una tarjeta para quitarla de favoritos. Pulsa OK en una tarjeta atenuada para volver a añadirla.</string>
     <string name="player_channel_list">Canales</string>
     <string name="player_settings">Ajustes del reproductor</string>
+    <string name="player_pip">Imagen en imagen</string>
     <string name="playlist_delete_title">¿Eliminar “%1$s”?</string>
     <string name="playlist_delete_body">Se eliminarán todos los canales, películas, series, datos de EPG y favoritos en caché de esta lista.</string>
     <string name="settings_refresh_mode">Actualización de listas</string>
