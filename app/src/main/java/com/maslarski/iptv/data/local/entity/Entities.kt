@@ -21,6 +21,12 @@ data class PlaylistEntity(
     val channelCount: Int = 0,
     val movieCount: Int = 0,
     val seriesCount: Int = 0,
+    val epgSyncedAt: Long? = null,
+    val accountStatus: String? = null,
+    val accountExpiresAt: Long? = null,
+    val maxConnections: Int? = null,
+    /** Comma-separated `allowed_output_formats` reported by an Xtream line (e.g. "m3u8,ts"). */
+    val outputFormats: String? = null,
 )
 
 @Entity(

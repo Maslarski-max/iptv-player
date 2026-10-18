@@ -23,4 +23,5 @@ sealed interface Route {
     ) : Route
     @Serializable data object Activation : Route
     @Serializable data object ManageCategories : Route
+    @Serializable data class SettingsSection(val section: String) : Route
 }

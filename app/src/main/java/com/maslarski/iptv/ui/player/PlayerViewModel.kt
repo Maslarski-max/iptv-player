@@ -21,6 +21,8 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import io.sentry.okhttp.SentryOkHttpInterceptor
 import java.util.concurrent.TimeUnit
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.navigation.toRoute
@@ -127,8 +129,14 @@ class PlayerViewModel @Inject constructor(
     )
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
+    // Tunneled (audio/video synced in the HAL) playback is never requested: some boxes (Aiplus4K) fail the
+    // tunneled output port (OMX err -1010) and then freeze while the codec is re-created.
     private val trackSelector = DefaultTrackSelector(context).apply {
-        setParameters(buildUponParameters().setPreferredTextLanguage(Locale.getDefault().language))
+        setParameters(
+            buildUponParameters()
+                .setPreferredTextLanguage(Locale.getDefault().language)
+                .setTunnelingEnabled(false),
+        )
     }
 
     // Live keeps the lightweight zapping buffers for weak TV chipsets; movies/series buffer far deeper so
@@ -143,6 +151,7 @@ class PlayerViewModel @Inject constructor(
         // Surface.setFrameRate is never called so the display/surface is not reset mid-stream.
         DecoderEngineRenderersFactory(context, (settings.snapshot.value ?: AppSettings()).let { DecoderPreferences(it.videoDecoder, it.audioDecoder) })
             .setEnableDecoderFallback(true)
+            .setEnableAudioTrackPlaybackParams(false)
             .setAllowedVideoJoiningTimeMs(VIDEO_JOINING_TIME_MS),
     )
         .setTrackSelector(trackSelector)
@@ -288,12 +297,37 @@ class PlayerViewModel @Inject constructor(
         override fun onTracksChanged(tracks: Tracks) { refreshTracks(tracks) }
     }
 
+    /**
+     * The audio HAL on some boxes reports AudioTrack timestamps that jump behind the written frames; Media3
+     * only logs these as non-fatal sink errors while the picture is already frozen. A burst of them is
+     * treated like a stall: stop, release the decoders and reconnect silently.
+     */
+    private val audioSinkWatchdog = object : AnalyticsListener {
+        override fun onAudioSinkError(eventTime: AnalyticsListener.EventTime, audioSinkError: Exception) {
+            if (audioSinkError !is AudioSink.UnexpectedDiscontinuityException) return
+            val now = System.currentTimeMillis()
+            if (now - audioDiscontinuityWindowStart > AUDIO_DISCONTINUITY_WINDOW_MS) {
+                audioDiscontinuityWindowStart = now
+                audioDiscontinuityCount = 0
+            }
+            audioDiscontinuityCount++
+            if (audioDiscontinuityCount >= AUDIO_DISCONTINUITY_LIMIT && reconnectJob?.isActive != true) {
+                audioDiscontinuityCount = 0
+                _state.update { it.copy(error = STALL_ERROR) }
+                scheduleReconnect()
+            }
+        }
+    }
+    private var audioDiscontinuityWindowStart = 0L
+    private var audioDiscontinuityCount = 0
+
     init {
         viewModelScope.launch {
             settings.snapshot.filterNotNull().map { it.bufferProfile }.distinctUntilChanged()
                 .collect { loadControl.setProfiles(bufferProfilesFor(it)) }
         }
         player.addListener(listener)
+        player.addAnalyticsListener(audioSinkWatchdog)
         viewModelScope.launch {
             val current = settings.current()
             loadControl.setProfiles(bufferProfilesFor(current.bufferProfile))
@@ -401,6 +435,8 @@ class PlayerViewModel @Inject constructor(
         reconnectJob?.cancel()
         readySinceMillis = 0L
         bufferingSinceMillis = 0L
+        audioDiscontinuityWindowStart = 0L
+        audioDiscontinuityCount = 0
         _state.update { it.copy(reconnectAttempt = 0, videoAspect = null) }
         loadControl.setLive(live)
         val builder = MediaItem.Builder().setUri(url)
@@ -575,6 +611,7 @@ class PlayerViewModel @Inject constructor(
         reconnectJob?.cancel()
         progressJob?.cancel()
         player.removeListener(listener)
+        player.removeAnalyticsListener(audioSinkWatchdog)
         player.release()
         super.onCleared()
     }
@@ -585,6 +622,8 @@ class PlayerViewModel @Inject constructor(
         private const val LIVE_STALL_TIMEOUT_MS = 20_000L
         private const val VOD_STALL_TIMEOUT_MS = 45_000L
         private const val STALL_ERROR = "STALLED"
+        private const val AUDIO_DISCONTINUITY_LIMIT = 5
+        private const val AUDIO_DISCONTINUITY_WINDOW_MS = 3_000L
     }
 }
 

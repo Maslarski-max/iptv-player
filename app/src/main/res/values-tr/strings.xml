@@ -270,4 +270,22 @@
     <string name="settings_buffer_medium">Orta (dengeli - varsayılan)</string>
     <string name="settings_buffer_large">Büyük (yüksek tutma / zayıf bağlantı)</string>
     <string name="settings_buffer_extra_large">Çok büyük (maksimum tutma / zayıf bağlantı)</string>
+    <string name="settings_back_hint">Ayarlar\'a dönmek için Geri\'ye basın</string>
+    <string name="settings_parental_disabled">PIN kilidi kapalı</string>
+    <string name="settings_tmdb_custom">Özel anahtar</string>
+    <string name="settings_tmdb_builtin">Yerleşik anahtar</string>
+    <string name="settings_tmdb_none">Anahtar yok</string>
+    <string name="settings_decoder_hw_short">Donanım</string>
+    <string name="settings_decoder_sw_short">Yazılım</string>
+    <string name="playlist_details_title">Etkin oynatma listesi ayrıntıları</string>
+    <string name="playlist_host">Sunucu / ana makine</string>
+    <string name="playlist_stream_format">Yayın biçimi</string>
+    <string name="playlist_epg_status">EPG eşitleme</string>
+    <string name="playlist_epg_not_configured">Yapılandırılmadı</string>
+    <string name="playlist_line_status">Hat durumu</string>
+    <string name="playlist_max_connections">Maks. bağlantı</string>
+    <string name="playlist_expiry_unlimited">Sınırsız</string>
+    <string name="playlist_not_provided">Sağlanmadı</string>
+    <string name="playlist_format_local_file">Yerel dosya</string>
+    <string name="playlist_no_active">Etkin oynatma listesi yok</string>
 </resources>

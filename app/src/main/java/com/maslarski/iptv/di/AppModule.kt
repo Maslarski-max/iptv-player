@@ -27,7 +27,7 @@ object AppModule {
     @Singleton
     fun database(@ApplicationContext context: Context): IptvDatabase =
         Room.databaseBuilder(context, IptvDatabase::class.java, IptvDatabase.NAME)
-            .addMigrations(IptvDatabase.MIGRATION_3_4)
+            .addMigrations(IptvDatabase.MIGRATION_3_4, IptvDatabase.MIGRATION_4_5)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
