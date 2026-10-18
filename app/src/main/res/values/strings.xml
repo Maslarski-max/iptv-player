@@ -311,4 +311,22 @@
     <string name="settings_buffer_medium">Medium (Balanced - Default)</string>
     <string name="settings_buffer_large">Large (High Retention / Poor Connections)</string>
     <string name="settings_buffer_extra_large">Extra Large (Maximum Retention / Weak Connections)</string>
+    <string name="settings_back_hint">Press Back to return to Settings</string>
+    <string name="settings_parental_disabled">PIN lock off</string>
+    <string name="settings_tmdb_custom">Custom key</string>
+    <string name="settings_tmdb_builtin">Built-in key</string>
+    <string name="settings_tmdb_none">No key set</string>
+    <string name="settings_decoder_hw_short">Hardware</string>
+    <string name="settings_decoder_sw_short">Software</string>
+    <string name="playlist_details_title">Active playlist details</string>
+    <string name="playlist_host">Server / host</string>
+    <string name="playlist_stream_format">Stream format</string>
+    <string name="playlist_epg_status">EPG sync</string>
+    <string name="playlist_epg_not_configured">Not configured</string>
+    <string name="playlist_line_status">Line status</string>
+    <string name="playlist_max_connections">Max connections</string>
+    <string name="playlist_expiry_unlimited">Unlimited</string>
+    <string name="playlist_not_provided">Not provided</string>
+    <string name="playlist_format_local_file">Local file</string>
+    <string name="playlist_no_active">No active playlist</string>
 </resources>

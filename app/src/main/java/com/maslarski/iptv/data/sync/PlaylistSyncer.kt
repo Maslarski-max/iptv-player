@@ -209,7 +209,14 @@ class PlaylistSyncer @Inject constructor(
     // ---------------------------------------------------------------- Xtream
 
     private suspend fun syncXtream(playlist: Playlist) {
-        xtream.authenticate(playlist)
+        val account = xtream.authenticate(playlist)
+        db.playlistDao().updateAccountInfo(
+            id = playlist.id,
+            status = account.status,
+            expiresAt = account.expiresAt,
+            maxConnections = account.maxConnections,
+            outputFormats = account.allowedOutputFormats.takeIf { it.isNotEmpty() }?.joinToString(","),
+        )
         _status.value = SyncStatus(isSyncing = true, playlistId = playlist.id, message = "Loading categories")
         val liveCats = xtream.categories(playlist, ContentType.LIVE)
         val vodCats = xtream.categories(playlist, ContentType.MOVIE)
@@ -274,6 +281,7 @@ class PlaylistSyncer @Inject constructor(
         }
         if (staging.isNotEmpty()) db.epgDao().insertAll(staging)
         db.epgDao().deleteEndedBefore(now - 12 * 60 * 60 * 1000L)
+        db.playlistDao().updateEpgSyncedAt(playlist.id, System.currentTimeMillis())
     }
 
     companion object {

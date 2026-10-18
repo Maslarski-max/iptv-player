@@ -270,4 +270,22 @@
     <string name="settings_buffer_medium">Medio (equilibrado - predeterminado)</string>
     <string name="settings_buffer_large">Grande (alta retención / conexiones malas)</string>
     <string name="settings_buffer_extra_large">Extra grande (máxima retención / conexiones débiles)</string>
+    <string name="settings_back_hint">Pulsa Atrás para volver a Ajustes</string>
+    <string name="settings_parental_disabled">Bloqueo por PIN desactivado</string>
+    <string name="settings_tmdb_custom">Clave propia</string>
+    <string name="settings_tmdb_builtin">Clave integrada</string>
+    <string name="settings_tmdb_none">Sin clave</string>
+    <string name="settings_decoder_hw_short">Hardware</string>
+    <string name="settings_decoder_sw_short">Software</string>
+    <string name="playlist_details_title">Detalles de la lista activa</string>
+    <string name="playlist_host">Servidor / host</string>
+    <string name="playlist_stream_format">Formato del stream</string>
+    <string name="playlist_epg_status">Sincronización EPG</string>
+    <string name="playlist_epg_not_configured">No configurado</string>
+    <string name="playlist_line_status">Estado de la línea</string>
+    <string name="playlist_max_connections">Conexiones máx.</string>
+    <string name="playlist_expiry_unlimited">Ilimitado</string>
+    <string name="playlist_not_provided">No proporcionado</string>
+    <string name="playlist_format_local_file">Archivo local</string>
+    <string name="playlist_no_active">No hay lista activa</string>
 </resources>
