@@ -435,6 +435,8 @@ class PlayerViewModel @Inject constructor(
         reconnectJob?.cancel()
         readySinceMillis = 0L
         bufferingSinceMillis = 0L
+        audioDiscontinuityWindowStart = 0L
+        audioDiscontinuityCount = 0
         _state.update { it.copy(reconnectAttempt = 0, videoAspect = null) }
         loadControl.setLive(live)
         val builder = MediaItem.Builder().setUri(url)
