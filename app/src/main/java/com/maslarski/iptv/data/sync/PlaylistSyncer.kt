@@ -281,7 +281,7 @@ class PlaylistSyncer @Inject constructor(
         }
         if (staging.isNotEmpty()) db.epgDao().insertAll(staging)
         db.epgDao().deleteEndedBefore(now - 12 * 60 * 60 * 1000L)
-        db.playlistDao().updateEpgSyncedAt(playlist.id, System.currentTimeMillis())
+        if (!first) db.playlistDao().updateEpgSyncedAt(playlist.id, System.currentTimeMillis())
     }
 
     companion object {

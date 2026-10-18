@@ -82,7 +82,7 @@ class XtreamClient @Inject constructor(private val api: XtreamApi) {
         val formats = user.arr("allowed_output_formats")?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull } ?: emptyList()
         XtreamAccount(
             status = user.str("status"),
-            expiresAt = user.long("exp_date")?.times(1000),
+            expiresAt = user.long("exp_date")?.takeIf { it > 0 }?.times(1000),
             maxConnections = user.int("max_connections"),
             activeConnections = user.int("active_cons"),
             allowedOutputFormats = formats,

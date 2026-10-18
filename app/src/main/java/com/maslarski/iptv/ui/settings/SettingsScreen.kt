@@ -331,8 +331,13 @@ fun SettingsSectionScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val locked = if (section == SettingsSection.PARENTAL) viewModel.lockedCategories.collectAsStateWithLifecycle().value else LockedCategories()
     val compact = LocalConfiguration.current.screenWidthDp < 600
     val firstFocus = remember { FocusRequester() }
+    var pendingDelete by remember { mutableStateOf<Playlist?>(null) }
+    pendingDelete?.let { p ->
+        DeletePlaylistDialog(p, onConfirm = { viewModel.deletePlaylist(p.id); pendingDelete = null }, onDismiss = { pendingDelete = null })
+    }
     LaunchedEffect(section) {
         repeat(10) {
             withFrameNanos {}
@@ -405,9 +410,9 @@ fun SettingsSectionScreen(
                     }
                 }
             }
-            SettingsSection.PLAYLISTS -> playlistsSection(state, viewModel, onAddPlaylist, onEditPlaylist, onManageCategories, firstFocus)
+            SettingsSection.PLAYLISTS -> playlistsSection(state, viewModel, onAddPlaylist, onEditPlaylist, onManageCategories, { pendingDelete = it }, firstFocus)
             SettingsSection.METADATA -> item { TmdbKeyField(state.settings.tmdbApiKey, viewModel::setTmdbApiKey, firstFocus) }
-            SettingsSection.PARENTAL -> parentalSection(state, viewModel, firstFocus)
+            SettingsSection.PARENTAL -> parentalSection(state, locked, viewModel, firstFocus)
         }
     }
 }
@@ -418,13 +423,10 @@ private fun androidx.compose.foundation.lazy.LazyListScope.playlistsSection(
     onAddPlaylist: () -> Unit,
     onEditPlaylist: (Long) -> Unit,
     onManageCategories: () -> Unit,
+    onDelete: (Playlist) -> Unit,
     firstFocus: FocusRequester,
 ) {
-    item {
-        var pendingDelete by remember { mutableStateOf<Playlist?>(null) }
-        pendingDelete?.let { p ->
-            DeletePlaylistDialog(p, onConfirm = { viewModel.deletePlaylist(p.id); pendingDelete = null }, onDismiss = { pendingDelete = null })
-        }
+    item(key = "actions") {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             GlowButton(stringResource(R.string.action_add_playlist), onAddPlaylist, icon = Icons.Filled.Add, modifier = Modifier.focusRequester(firstFocus))
             if (state.playlists.isNotEmpty()) {
@@ -441,20 +443,20 @@ private fun androidx.compose.foundation.lazy.LazyListScope.playlistsSection(
             )
             Spacer(Modifier.height(12.dp))
         }
-        state.playlists.forEach { p ->
-            PlaylistRow(
-                playlist = p,
-                syncing = state.sync.isSyncing && state.sync.playlistId == p.id,
-                syncMessage = state.sync.message,
-                onActivate = { viewModel.activatePlaylist(p.id) },
-                onEdit = { onEditPlaylist(p.id) },
-                onRefresh = { viewModel.refresh(p) },
-                onDelete = { pendingDelete = p },
-            )
-            Spacer(Modifier.height(12.dp))
-        }
     }
-    item {
+    items(state.playlists, key = { "playlist:${it.id}" }) { p ->
+        PlaylistRow(
+            playlist = p,
+            syncing = state.sync.isSyncing && state.sync.playlistId == p.id,
+            syncMessage = state.sync.message,
+            onActivate = { viewModel.activatePlaylist(p.id) },
+            onEdit = { onEditPlaylist(p.id) },
+            onRefresh = { viewModel.refresh(p) },
+            onDelete = { onDelete(p) },
+        )
+        Spacer(Modifier.height(12.dp))
+    }
+    item(key = "details") {
         Spacer(Modifier.height(8.dp))
         SectionHeader(stringResource(R.string.playlist_details_title), modifier = Modifier.padding(horizontal = 0.dp))
         val active = state.playlists.firstOrNull { it.isActive }
@@ -482,10 +484,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.playlistsSection(
 
 private fun androidx.compose.foundation.lazy.LazyListScope.parentalSection(
     state: SettingsUiState,
+    locked: LockedCategories,
     viewModel: SettingsViewModel,
     firstFocus: FocusRequester,
 ) {
-    item {
+    item(key = "pin") {
         var pinMode by remember { mutableStateOf(PinMode.NONE) }
         var pinError by remember { mutableStateOf<String?>(null) }
         val wrongPin = stringResource(R.string.pin_wrong)
@@ -520,17 +523,11 @@ private fun androidx.compose.foundation.lazy.LazyListScope.parentalSection(
         Spacer(Modifier.height(12.dp))
     }
     if (state.settings.isParentalEnabled) {
-        item { LockedCategoryList(viewModel) }
-    }
-}
-
-@Composable
-private fun LockedCategoryList(viewModel: SettingsViewModel) {
-    val locked by viewModel.lockedCategories.collectAsStateWithLifecycle()
-    Column {
-        Text(stringResource(R.string.settings_locked_categories), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
-        Spacer(Modifier.height(8.dp))
-        locked.categories.forEach { c ->
+        item(key = "locked-header") {
+            Text(stringResource(R.string.settings_locked_categories), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+            Spacer(Modifier.height(8.dp))
+        }
+        items(locked.categories, key = { "${it.type}:${it.id}" }) { c ->
             ToggleRow(c.name, stringResource(c.type.label()), c.id in locked.lockedIds) { viewModel.toggleLock(c) }
         }
     }
