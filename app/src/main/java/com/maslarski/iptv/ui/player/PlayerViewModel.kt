@@ -261,6 +261,9 @@ class PlayerViewModel @Inject constructor(
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             _state.update { it.copy(isPaused = !playWhenReady) }
+            if (playWhenReady && player.playbackState == Player.STATE_BUFFERING) {
+                bufferingSinceMillis = System.currentTimeMillis()
+            }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {

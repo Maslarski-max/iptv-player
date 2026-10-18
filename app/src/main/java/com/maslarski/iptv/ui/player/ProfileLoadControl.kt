@@ -82,7 +82,7 @@ class ProfileLoadControl(profiles: BufferProfiles) : LoadControl {
     private fun byteCapFor(p: BufferProfile): Int {
         val heapCap = (Runtime.getRuntime().maxMemory() / HEAP_FRACTION).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         val byDuration = (p.maxBufferMs.toLong() * PEAK_BYTES_PER_SECOND / 1_000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        return byDuration.coerceIn(MIN_TARGET_BYTES, heapCap.coerceAtLeast(MIN_TARGET_BYTES))
+        return byDuration.coerceAtLeast(MIN_TARGET_BYTES).coerceAtMost(heapCap)
     }
 
     override fun onStopped(playerId: PlayerId) = reset()
@@ -117,7 +117,8 @@ class ProfileLoadControl(profiles: BufferProfiles) : LoadControl {
         )
         if (parameters.targetLiveOffsetUs != C.TIME_UNSET) targetPlayoutUs = minOf(parameters.targetLiveOffsetUs / 2, targetPlayoutUs)
         val bufferedPlayoutUs = Util.getPlayoutDurationForMediaDuration(parameters.bufferedDurationUs, parameters.playbackSpeed)
-        return targetPlayoutUs <= 0 || bufferedPlayoutUs >= targetPlayoutUs
+        return targetPlayoutUs <= 0 || bufferedPlayoutUs >= targetPlayoutUs ||
+            allocator.totalBytesAllocated >= targetBufferBytes
     }
 
     override fun shouldContinuePreloading(
