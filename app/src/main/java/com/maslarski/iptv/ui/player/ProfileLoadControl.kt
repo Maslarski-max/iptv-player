@@ -29,9 +29,10 @@ data class BufferProfiles(val live: BufferProfile, val vod: BufferProfile)
 /**
  * A time-prioritised [LoadControl] whose thresholds switch between a fast-zapping live profile and a
  * high-retention VOD profile on a single [androidx.media3.exoplayer.ExoPlayer]. Select the profile with
- * [setLive] before preparing the next media item. Byte accounting mirrors [DefaultLoadControl]: the
- * target size follows the selected tracks and, when the heap is nearly exhausted, caps loading even
- * below the minimum duration.
+ * [setLive] before preparing the next media item. Byte accounting is size-prioritised: the target size is
+ * the smaller of the selected tracks' default sizes and a per-profile cap derived from the profile's
+ * maximum duration, and once it is reached loading stops even below the minimum duration. A stream whose
+ * timestamps stop advancing therefore cannot grow the sample queues without bound.
  */
 @UnstableApi
 class ProfileLoadControl(profiles: BufferProfiles) : LoadControl {
@@ -43,7 +44,8 @@ class ProfileLoadControl(profiles: BufferProfiles) : LoadControl {
     @Volatile
     private var isLive = true
     private val profile: BufferProfile get() = profiles.let { if (isLive) it.live else it.vod }
-    private var targetBufferBytes = DefaultLoadControl.DEFAULT_MIN_BUFFER_SIZE
+    private var trackBufferBytes = MIN_TARGET_BYTES
+    private var targetBufferBytes = MIN_TARGET_BYTES
     private var isLoading = false
 
     fun setLive(isLive: Boolean) {
@@ -64,10 +66,23 @@ class ProfileLoadControl(profiles: BufferProfiles) : LoadControl {
         trackGroups: TrackGroupArray,
         trackSelections: Array<out ExoTrackSelection?>,
     ) {
-        targetBufferBytes = trackSelections.filterNotNull()
-            .sumOf { defaultBufferSize(it.trackGroup.type) }
-            .coerceAtLeast(DefaultLoadControl.DEFAULT_MIN_BUFFER_SIZE)
-        allocator.setTargetBufferSize(targetBufferBytes)
+        trackBufferBytes = trackSelections.filterNotNull().sumOf { defaultBufferSize(it.trackGroup.type) }
+        applyTargetBufferBytes()
+    }
+
+    private fun applyTargetBufferBytes() {
+        val target = minOf(trackBufferBytes, byteCapFor(profile))
+        if (target != targetBufferBytes) {
+            targetBufferBytes = target
+            allocator.setTargetBufferSize(target)
+        }
+    }
+
+    /** Bytes a profile may hold: its maximum duration at a generous IPTV bitrate, bounded by the heap. */
+    private fun byteCapFor(p: BufferProfile): Int {
+        val heapCap = (Runtime.getRuntime().maxMemory() / HEAP_FRACTION).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val byDuration = (p.maxBufferMs.toLong() * PEAK_BYTES_PER_SECOND / 1_000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        return byDuration.coerceIn(MIN_TARGET_BYTES, heapCap.coerceAtLeast(MIN_TARGET_BYTES))
     }
 
     override fun onStopped(playerId: PlayerId) = reset()
@@ -82,20 +97,18 @@ class ProfileLoadControl(profiles: BufferProfiles) : LoadControl {
 
     override fun shouldContinueLoading(parameters: LoadControl.Parameters): Boolean {
         val p = profile
+        applyTargetBufferBytes()
         val bufferedUs = parameters.bufferedDurationUs
         val minBufferUs = Util.getMediaDurationForPlayoutDuration(Util.msToUs(p.minBufferMs.toLong()), parameters.playbackSpeed)
         val maxBufferUs = Util.msToUs(p.maxBufferMs.toLong())
         val targetBytesReached = allocator.totalBytesAllocated >= targetBufferBytes
         isLoading = when {
-            bufferedUs < minBufferUs -> !(targetBytesReached && bufferedUs >= recoveryFloorUs(p) && heapIsLow())
-            bufferedUs >= maxBufferUs || targetBytesReached -> false
+            targetBytesReached || bufferedUs >= maxBufferUs -> false
+            bufferedUs < minBufferUs -> true
             else -> isLoading
         }
         return isLoading
     }
-
-    /** Below this much buffered media loading always resumes, so a low-heap cap can never starve playback. */
-    private fun recoveryFloorUs(p: BufferProfile): Long = Util.msToUs(p.bufferForPlaybackAfterRebufferMs.toLong())
 
     override fun shouldStartPlayback(parameters: LoadControl.Parameters): Boolean {
         val p = profile
@@ -116,15 +129,10 @@ class ProfileLoadControl(profiles: BufferProfiles) : LoadControl {
 
     private fun reset() {
         isLoading = false
-        targetBufferBytes = DefaultLoadControl.DEFAULT_MIN_BUFFER_SIZE
+        trackBufferBytes = MIN_TARGET_BYTES
+        targetBufferBytes = MIN_TARGET_BYTES
+        allocator.setTargetBufferSize(targetBufferBytes)
         allocator.reset()
-    }
-
-    private fun heapIsLow(): Boolean {
-        val runtime = Runtime.getRuntime()
-        if (runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory()) >= LOW_HEAP_HEADROOM_BYTES) return false
-        allocator.trim()
-        return true
     }
 
     private fun defaultBufferSize(trackType: @C.TrackType Int): Int = when (trackType) {
@@ -139,6 +147,8 @@ class ProfileLoadControl(profiles: BufferProfiles) : LoadControl {
     }
 
     private companion object {
-        const val LOW_HEAP_HEADROOM_BYTES = 16L * 1024 * 1024
+        const val MIN_TARGET_BYTES = 16 * 1024 * 1024
+        const val PEAK_BYTES_PER_SECOND = 1_572_864L // 12 Mbit/s
+        const val HEAP_FRACTION = 4L
     }
 }

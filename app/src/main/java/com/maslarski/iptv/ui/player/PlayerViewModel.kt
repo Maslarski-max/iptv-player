@@ -239,6 +239,7 @@ class PlayerViewModel @Inject constructor(
     private var reconnectJob: Job? = null
     private var pausedByStop = false
     private var readySinceMillis = 0L
+    private var bufferingSinceMillis = 0L
     private var progressJob: Job? = null
     private var epgJob: Job? = null
     private var lastSavedPosition = 0L
@@ -270,6 +271,7 @@ class PlayerViewModel @Inject constructor(
                 )
             }
             readySinceMillis = if (playbackState == Player.STATE_READY) System.currentTimeMillis() else 0L
+            bufferingSinceMillis = if (playbackState == Player.STATE_BUFFERING) System.currentTimeMillis() else 0L
             if (playbackState == Player.STATE_ENDED) {
                 if (_state.value.isLive) scheduleReconnect() else onEnded()
             }
@@ -309,6 +311,12 @@ class PlayerViewModel @Inject constructor(
                     _state.update { it.copy(reconnectAttempt = 0) }
                 }
                 _state.update { it.copy(positionMillis = player.currentPosition, durationMillis = duration) }
+                if (bufferingSinceMillis > 0 && player.playWhenReady && reconnectJob?.isActive != true &&
+                    System.currentTimeMillis() - bufferingSinceMillis >= stallTimeoutMs()
+                ) {
+                    _state.update { it.copy(error = STALL_ERROR) }
+                    scheduleReconnect()
+                }
                 if (!_state.value.isLive && duration > 0 && abs(player.currentPosition - lastSavedPosition) > 5_000) {
                     persistProgress()
                 }
@@ -389,6 +397,7 @@ class PlayerViewModel @Inject constructor(
     private fun prepare(url: String, live: Boolean, startPosition: Long = 0L) {
         reconnectJob?.cancel()
         readySinceMillis = 0L
+        bufferingSinceMillis = 0L
         _state.update { it.copy(reconnectAttempt = 0, videoAspect = null) }
         loadControl.setLive(live)
         val builder = MediaItem.Builder().setUri(url)
@@ -421,20 +430,27 @@ class PlayerViewModel @Inject constructor(
 
     // -------------------------------------------------------------- reconnect
 
+    // Every retry first stops the player, which cancels the in-flight loaders (closing their HTTP
+    // connections), drops the buffered samples back to the allocator and resets the load control, so a
+    // stalled stream never keeps its old buffers alive while the next attempt loads.
     private fun scheduleReconnect() {
         reconnectJob?.cancel()
+        val position = if (_state.value.isLive) C.TIME_UNSET else player.currentPosition
+        player.stop()
+        bufferingSinceMillis = 0L
         reconnectJob = viewModelScope.launch {
             val attempt = _state.value.reconnectAttempt + 1
             if (attempt > MAX_RECONNECTS) return@launch
             _state.update { it.copy(reconnectAttempt = attempt) }
             delay((1_000L * attempt).coerceAtMost(8_000L))
-            val position = if (_state.value.isLive) C.TIME_UNSET else player.currentPosition
             player.seekToDefaultPosition()
             if (position != C.TIME_UNSET) player.seekTo(position)
             player.prepare()
             player.playWhenReady = true
         }
     }
+
+    private fun stallTimeoutMs(): Long = if (_state.value.isLive) LIVE_STALL_TIMEOUT_MS else VOD_STALL_TIMEOUT_MS
 
     // ------------------------------------------------------------------ tracks
 
@@ -563,6 +579,9 @@ class PlayerViewModel @Inject constructor(
     companion object {
         const val MAX_RECONNECTS = 8
         private const val STABLE_PLAYBACK_MS = 10_000L
+        private const val LIVE_STALL_TIMEOUT_MS = 20_000L
+        private const val VOD_STALL_TIMEOUT_MS = 45_000L
+        private const val STALL_ERROR = "STALLED"
     }
 }
 
