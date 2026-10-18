@@ -27,7 +27,7 @@ data class BufferProfile(
 data class BufferProfiles(val live: BufferProfile, val vod: BufferProfile)
 
 /**
- * A time-prioritised [LoadControl] whose thresholds switch between a fast-zapping live profile and a
+ * A [LoadControl] whose thresholds switch between a fast-zapping live profile and a
  * high-retention VOD profile on a single [androidx.media3.exoplayer.ExoPlayer]. Select the profile with
  * [setLive] before preparing the next media item. Byte accounting is size-prioritised: the target size is
  * the smaller of the selected tracks' default sizes and a per-profile cap derived from the profile's
