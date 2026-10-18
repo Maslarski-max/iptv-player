@@ -280,6 +280,8 @@ class PlaylistSyncer @Inject constructor(
             }
         }
         if (staging.isNotEmpty()) db.epgDao().insertAll(staging)
+        // A guide that parsed fine but kept nothing in the window still replaces the stale one.
+        if (first) db.epgDao().deleteAll()
         db.epgDao().deleteEndedBefore(now - 12 * 60 * 60 * 1000L)
         db.playlistDao().updateEpgSyncedAt(playlist.id, System.currentTimeMillis())
     }

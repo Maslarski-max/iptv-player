@@ -28,7 +28,7 @@ class PlaylistRepository @Inject constructor(private val db: IptvDatabase) {
         val sameSource = existing != null && existing.type == playlist.type && existing.url == playlist.url &&
             existing.username == playlist.username && existing.password == playlist.password
         val keepAccount = sameSource
-        val keepEpg = existing != null && existing.epgUrl == playlist.epgUrl &&
+        val keepEpg = existing != null && existing.type == playlist.type && existing.epgUrl == playlist.epgUrl &&
             (playlist.type == PlaylistType.M3U || sameSource)
         val entity = playlist.copy(
             isActive = makeActive || existing?.isActive == true,
