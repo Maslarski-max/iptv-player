@@ -583,7 +583,11 @@ private fun AccountCard(license: LicenseState, onActivate: () -> Unit, focus: Fo
         }
         InfoRow(stringResource(R.string.account_device_id), license.deviceId, mono = true)
         val mac by produceState<String?>(null) { value = withContext(Dispatchers.IO) { DeviceInfo.macAddress() } }
-        InfoRow(stringResource(R.string.account_mac_address), mac ?: license.deviceId, mono = true)
+        InfoRow(
+            stringResource(R.string.account_mac_address),
+            mac ?: "${license.deviceId} (${stringResource(R.string.account_device_id)})",
+            mono = true,
+        )
         InfoRow(
             stringResource(R.string.account_verification),
             stringResource(if (license.remote) R.string.account_verified_server else R.string.account_verified_local),
