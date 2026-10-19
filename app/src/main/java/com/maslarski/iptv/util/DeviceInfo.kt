@@ -13,7 +13,7 @@ object DeviceInfo {
     private val SHELL_COMMANDS = listOf(
         listOf("ip", "-o", "link", "show"),
         listOf("ip", "link", "show"),
-        listOf("sh", "-c", "for f in /sys/class/net/*/address; do echo \"$f $(cat \"$f\")\"; done"),
+        listOf("sh", "-c", "for f in /sys/class/net/*/address; do echo \"\$f \$(cat \"\$f\")\"; done"),
         listOf("getprop"),
     )
     private val MAC_PROPS = listOf(
