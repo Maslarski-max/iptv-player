@@ -24,7 +24,7 @@ object DeviceInfo {
     private val IP_LINK_UP = Regex("<[^>]*\\bUP\\b[^>]*>")
     private val IP_LINK_ETHER = Regex("link/ether\\s+(\\S+)")
     private val SYSFS_LINE = Regex("^/sys/class/net/([^/\\s]+)/address\\s+(\\S+)")
-    private val PHYSICAL_NAME = Regex("^(eth|wlan|usb)\\d+$")
+    private val PHYSICAL_NAME = Regex("^(eth|wlan|usb|en[a-z0-9]*|wl[a-z0-9]*)\\d*$")
 
     /**
      * Physical (MAC) address of the Ethernet/Wi-Fi adapter, or `null` when none can be read. All interface
@@ -83,7 +83,7 @@ object DeviceInfo {
             SYSFS_LINE.find(line)?.let { m ->
                 val name = m.groupValues[1]
                 val mac = normalize(m.groupValues[2])
-                if (mac != null && PHYSICAL_NAME.matches(name) && name !in found) found[name] = false to mac
+                if (mac != null && isShellPhysical(name) && name !in found) found[name] = false to mac
                 return@forEach
             }
             IP_LINK_IFACE.find(line)?.let {
@@ -92,7 +92,7 @@ object DeviceInfo {
             }
             val name = current ?: return@forEach
             val mac = IP_LINK_ETHER.find(line)?.groupValues?.get(1)?.let(::normalize) ?: return@forEach
-            if (PHYSICAL_NAME.matches(name) && name !in found) found[name] = currentUp to mac
+            if (isShellPhysical(name) && name !in found) found[name] = currentUp to mac
         }
         return found.entries
             .sortedWith(compareByDescending<Map.Entry<String, Pair<Boolean, String>>> { it.value.first }.thenBy { preferenceRank(it.key) })
@@ -101,6 +101,9 @@ object DeviceInfo {
 
     private fun sysfsAddress(name: String): String? =
         runCatching { File("/sys/class/net/$name/address").readText() }.getOrNull()?.let(::normalize)
+
+    /** Shell results carry only a name: accept kernel/udev adapter names (eth*, wlan*, usb*, en*, wl*) or anything sysfs proves physical. */
+    private fun isShellPhysical(name: String): Boolean = PHYSICAL_NAME.matches(name) || isPhysical(name)
 
     private fun isPhysical(name: String): Boolean =
         name in PREFERRED_INTERFACES ||

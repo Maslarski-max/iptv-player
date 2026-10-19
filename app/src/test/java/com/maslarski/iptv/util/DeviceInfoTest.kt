@@ -50,4 +50,10 @@ class DeviceInfoTest {
         assertEquals("B8:00:00:00:00:02", DeviceInfo.parseShellMacs("ip", output))
         assertNull(DeviceInfo.parseShellMacs("ip", "4: bridge0: <BROADCAST,UP> mtu 1500 link/ether 1a:11:22:33:44:55 brd ff:ff:ff:ff:ff:ff"))
     }
+
+    @Test
+    fun `predictable adapter names such as end0 are accepted`() {
+        val output = "2: end0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 link/ether a4:5e:60:12:34:56 brd ff:ff:ff:ff:ff:ff"
+        assertEquals("A4:5E:60:12:34:56", DeviceInfo.parseShellMacs("ip", output))
+    }
 }
