@@ -289,5 +289,4 @@
     <string name="playlist_format_local_file">Lokale Datei</string>
     <string name="playlist_no_active">Keine aktive Playlist</string>
     <string name="account_mac_address">MAC-Adresse</string>
-    <string name="account_mac_unavailable">Nicht verfügbar (von Android verborgen)</string>
 </resources>

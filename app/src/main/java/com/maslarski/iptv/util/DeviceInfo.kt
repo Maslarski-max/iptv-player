@@ -4,16 +4,17 @@ import java.io.File
 import java.net.NetworkInterface
 
 object DeviceInfo {
-    private val PREFERRED_INTERFACES = listOf("wlan0", "eth0", "wlan1", "eth1")
+    private val PREFERRED_INTERFACES = listOf("eth0", "wlan0", "eth1", "wlan1")
     private val VIRTUAL_PREFIXES = listOf("lo", "dummy", "tun", "tap", "p2p", "rmnet", "ccmni", "ip6tnl", "sit", "ifb", "gre", "veth", "br-", "docker", "wlan-aware")
     private val MAC_PATTERN = Regex("([0-9A-F]{2}:){5}[0-9A-F]{2}")
     private val PLACEHOLDER_MACS = setOf("00:00:00:00:00:00", "02:00:00:00:00:00")
 
     /**
-     * Hardware (MAC) address of the Wi-Fi/Ethernet adapter: interfaces that are up win, then the
-     * well-known names, then any other physical adapter (e.g. `usb0`). Returns `null` when the OS hides
-     * it (WifiManager returns 02:00:00:00:00:00 since Android 6 and NetworkInterface may return null on
-     * Android 11+, so sysfs is tried as a last resort).
+     * Hardware (MAC) address of the Ethernet/Wi-Fi adapter. `/sys/class/net/<iface>/address` is read
+     * first (interfaces that are up win, then eth0/wlan0/eth1/wlan1, then any other physical adapter such
+     * as `usb0`), falling back to [NetworkInterface.getHardwareAddress]. Returns `null` when the OS hides
+     * both (WifiManager returns 02:00:00:00:00:00 since Android 6; Android 11+ sandboxes sysfs and
+     * NetworkInterface for third-party apps).
      */
     fun macAddress(): String? {
         val interfaces = runCatching { NetworkInterface.getNetworkInterfaces()?.toList() }.getOrNull().orEmpty()
@@ -22,14 +23,15 @@ object DeviceInfo {
                 compareByDescending<NetworkInterface> { runCatching { it.isUp }.getOrDefault(false) }
                     .thenBy { preferenceRank(it.name) },
             )
-        interfaces.firstNotNullOfOrNull { nic -> runCatching { nic.hardwareAddress }.getOrNull()?.let(::normalize) }
-            ?.let { return it }
         val sysfsNames = File("/sys/class/net").listFiles()?.map { it.name }.orEmpty()
             .filter { isPhysical(it) }.sortedBy { preferenceRank(it) }
-        return (interfaces.map { it.name } + PREFERRED_INTERFACES + sysfsNames).distinct().firstNotNullOfOrNull { name ->
-            runCatching { File("/sys/class/net/$name/address").readText() }.getOrNull()?.let(::normalize)
-        }
+        (interfaces.map { it.name } + PREFERRED_INTERFACES + sysfsNames).distinct()
+            .firstNotNullOfOrNull(::sysfsAddress)?.let { return it }
+        return interfaces.firstNotNullOfOrNull { nic -> runCatching { nic.hardwareAddress }.getOrNull()?.let(::normalize) }
     }
+
+    private fun sysfsAddress(name: String): String? =
+        runCatching { File("/sys/class/net/$name/address").readText() }.getOrNull()?.let(::normalize)
 
     private fun isPhysical(name: String): Boolean =
         name in PREFERRED_INTERFACES ||

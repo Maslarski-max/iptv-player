@@ -290,5 +290,4 @@
     <string name="playlist_format_local_file">Lokalna datoteka</string>
     <string name="playlist_no_active">Nema aktivne liste</string>
     <string name="account_mac_address">MAC adresa</string>
-    <string name="account_mac_unavailable">Nedostupno (skriveno od strane Androida)</string>
 </resources>
