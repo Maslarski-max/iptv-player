@@ -270,4 +270,24 @@
     <string name="settings_buffer_medium">Среден (балансиран - стандардно)</string>
     <string name="settings_buffer_large">Голем (висока издржливост / слаба врска)</string>
     <string name="settings_buffer_extra_large">Екстра голем (максимална издржливост / слаба врска)</string>
+    <string name="settings_back_hint">Притиснете Назад за враќање во Поставки</string>
+    <string name="settings_parental_disabled">PIN заклучување исклучено</string>
+    <string name="settings_tmdb_custom">Сопствен клуч</string>
+    <string name="settings_tmdb_builtin">Вграден клуч</string>
+    <string name="settings_tmdb_none">Нема клуч</string>
+    <string name="settings_decoder_hw_short">Хардверски</string>
+    <string name="settings_decoder_sw_short">Софтверски</string>
+    <string name="playlist_details_title">Детали за активната плејлиста</string>
+    <string name="playlist_host">Сервер / хост</string>
+    <string name="playlist_stream_format">Формат на стрим</string>
+    <string name="playlist_epg_status">EPG синхронизација</string>
+    <string name="playlist_epg_not_configured">Не е поставено</string>
+    <string name="playlist_line_status">Статус на линијата</string>
+    <string name="playlist_max_connections">Макс. конекции</string>
+    <string name="playlist_expiry_unlimited">Неограничено</string>
+    <string name="playlist_not_provided">Не е доставено</string>
+    <string name="playlist_format_local_file">Локална датотека</string>
+    <string name="playlist_no_active">Нема активна плејлиста</string>
+    <string name="account_mac_address">MAC адреса</string>
+    <string name="account_mac_unavailable">Недостапно (скриено од Android)</string>
 </resources>

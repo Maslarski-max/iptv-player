@@ -271,4 +271,24 @@
     <string name="settings_buffer_medium">Srednji (uravnotežen - podrazumevano)</string>
     <string name="settings_buffer_large">Veliki (visoka zadrška / loša veza)</string>
     <string name="settings_buffer_extra_large">Ekstra veliki (maksimalna zadrška / slaba veza)</string>
+    <string name="settings_back_hint">Pritisnite Nazad za povratak u Podešavanja</string>
+    <string name="settings_parental_disabled">PIN zaključavanje isključeno</string>
+    <string name="settings_tmdb_custom">Sopstveni ključ</string>
+    <string name="settings_tmdb_builtin">Ugrađeni ključ</string>
+    <string name="settings_tmdb_none">Ključ nije podešen</string>
+    <string name="settings_decoder_hw_short">Hardverski</string>
+    <string name="settings_decoder_sw_short">Softverski</string>
+    <string name="playlist_details_title">Detalji aktivne liste</string>
+    <string name="playlist_host">Server / host</string>
+    <string name="playlist_stream_format">Format strima</string>
+    <string name="playlist_epg_status">EPG sinhronizacija</string>
+    <string name="playlist_epg_not_configured">Nije podešeno</string>
+    <string name="playlist_line_status">Status linije</string>
+    <string name="playlist_max_connections">Maks. konekcija</string>
+    <string name="playlist_expiry_unlimited">Neograničeno</string>
+    <string name="playlist_not_provided">Nije dostavljeno</string>
+    <string name="playlist_format_local_file">Lokalna datoteka</string>
+    <string name="playlist_no_active">Nema aktivne liste</string>
+    <string name="account_mac_address">MAC adresa</string>
+    <string name="account_mac_unavailable">Nedostupno (skriveno od strane Androida)</string>
 </resources>

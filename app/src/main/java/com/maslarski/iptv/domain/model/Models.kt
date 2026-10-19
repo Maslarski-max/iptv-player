@@ -17,6 +17,11 @@ data class Playlist(
     val channelCount: Int = 0,
     val movieCount: Int = 0,
     val seriesCount: Int = 0,
+    val epgSyncedAt: Long? = null,
+    val accountStatus: String? = null,
+    val accountExpiresAt: Long? = null,
+    val maxConnections: Int? = null,
+    val outputFormats: List<String> = emptyList(),
 )
 
 data class Category(

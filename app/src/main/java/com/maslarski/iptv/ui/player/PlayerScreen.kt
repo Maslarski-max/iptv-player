@@ -307,6 +307,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 }
                 view.subtitleView?.setApplyEmbeddedStyles(true)
             },
+            onRelease = { view -> view.player = null },
             modifier = when (state.aspect) {
                 AspectRatioMode.RATIO_16_9 -> Modifier.fillMaxHeight().aspectRatio(16f / 9f, matchHeightConstraintsFirst = true).align(Alignment.Center)
                 AspectRatioMode.RATIO_4_3 -> Modifier.fillMaxHeight().aspectRatio(4f / 3f, matchHeightConstraintsFirst = true).align(Alignment.Center)

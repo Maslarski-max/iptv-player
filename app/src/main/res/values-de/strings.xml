@@ -270,4 +270,24 @@
     <string name="settings_buffer_medium">Mittel (ausgewogen - Standard)</string>
     <string name="settings_buffer_large">Groß (hohe Reserve / schlechte Verbindungen)</string>
     <string name="settings_buffer_extra_large">Extragroß (maximale Reserve / schwache Verbindungen)</string>
+    <string name="settings_back_hint">Zurück drücken, um zu den Einstellungen zurückzukehren</string>
+    <string name="settings_parental_disabled">PIN-Sperre aus</string>
+    <string name="settings_tmdb_custom">Eigener Schlüssel</string>
+    <string name="settings_tmdb_builtin">Integrierter Schlüssel</string>
+    <string name="settings_tmdb_none">Kein Schlüssel</string>
+    <string name="settings_decoder_hw_short">Hardware</string>
+    <string name="settings_decoder_sw_short">Software</string>
+    <string name="playlist_details_title">Details der aktiven Playlist</string>
+    <string name="playlist_host">Server / Host</string>
+    <string name="playlist_stream_format">Stream-Format</string>
+    <string name="playlist_epg_status">EPG-Abgleich</string>
+    <string name="playlist_epg_not_configured">Nicht eingerichtet</string>
+    <string name="playlist_line_status">Status der Leitung</string>
+    <string name="playlist_max_connections">Max. Verbindungen</string>
+    <string name="playlist_expiry_unlimited">Unbegrenzt</string>
+    <string name="playlist_not_provided">Nicht angegeben</string>
+    <string name="playlist_format_local_file">Lokale Datei</string>
+    <string name="playlist_no_active">Keine aktive Playlist</string>
+    <string name="account_mac_address">MAC-Adresse</string>
+    <string name="account_mac_unavailable">Nicht verfügbar (von Android verborgen)</string>
 </resources>
