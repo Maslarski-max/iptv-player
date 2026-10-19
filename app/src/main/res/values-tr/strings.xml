@@ -289,4 +289,5 @@
     <string name="playlist_format_local_file">Yerel dosya</string>
     <string name="playlist_no_active">Etkin oynatma listesi yok</string>
     <string name="account_mac_address">MAC Adresi</string>
+    <string name="account_mac_unavailable">Kullanılamıyor (Android tarafından gizlendi)</string>
 </resources>
