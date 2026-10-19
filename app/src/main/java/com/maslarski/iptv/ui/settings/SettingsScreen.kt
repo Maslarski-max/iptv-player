@@ -250,7 +250,7 @@ private fun SectionCard(
     val shape = RoundedCornerShape(16.dp)
     Column(
         modifier.fillMaxWidth()
-            .then(if (compact) Modifier.heightIn(min = 132.dp) else Modifier.height(HUB_CARD_HEIGHT * LocalDensity.current.fontScale))
+            .then(if (compact) Modifier.heightIn(min = 132.dp) else Modifier.height(HUB_CARD_HEIGHT * maxOf(1f, LocalDensity.current.fontScale)))
             .focusGlow(interaction, shape, focusedScale = 1.02f, borderWidth = 2.dp, glowColor = Palette.ElectricBlue)
             .clip(shape).background(Palette.SurfaceElevated)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
