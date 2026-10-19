@@ -10,9 +10,10 @@ object DeviceInfo {
     private val PLACEHOLDER_MACS = setOf("00:00:00:00:00:00", "02:00:00:00:00:00")
 
     /**
-     * Hardware (MAC) address of the Ethernet/Wi-Fi adapter. `/sys/class/net/<iface>/address` is read
-     * first (interfaces that are up win, then eth0/wlan0/eth1/wlan1, then any other physical adapter such
-     * as `usb0`), falling back to [NetworkInterface.getHardwareAddress]. Returns `null` when the OS hides
+     * Hardware (MAC) address of the Ethernet/Wi-Fi adapter. Interfaces are ranked (up first, then
+     * eth0/wlan0/eth1/wlan1, then any other physical adapter such as `usb0`) and for each one
+     * `/sys/class/net/<iface>/address` is read before [NetworkInterface.getHardwareAddress]; names only
+     * known to sysfs are tried last. Returns `null` when the OS hides
      * both (WifiManager returns 02:00:00:00:00:00 since Android 6; Android 11+ sandboxes sysfs and
      * NetworkInterface for third-party apps).
      */
@@ -25,9 +26,11 @@ object DeviceInfo {
             )
         val sysfsNames = File("/sys/class/net").listFiles()?.map { it.name }.orEmpty()
             .filter { isPhysical(it) }.sortedBy { preferenceRank(it) }
-        (interfaces.map { it.name } + PREFERRED_INTERFACES + sysfsNames).distinct()
-            .firstNotNullOfOrNull(::sysfsAddress)?.let { return it }
-        return interfaces.firstNotNullOfOrNull { nic -> runCatching { nic.hardwareAddress }.getOrNull()?.let(::normalize) }
+        interfaces.firstNotNullOfOrNull { nic ->
+            sysfsAddress(nic.name) ?: runCatching { nic.hardwareAddress }.getOrNull()?.let(::normalize)
+        }?.let { return it }
+        val seen = interfaces.map { it.name }.toSet()
+        return (PREFERRED_INTERFACES + sysfsNames).distinct().filterNot { it in seen }.firstNotNullOfOrNull(::sysfsAddress)
     }
 
     private fun sysfsAddress(name: String): String? =
