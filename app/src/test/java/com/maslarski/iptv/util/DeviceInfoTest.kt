@@ -56,4 +56,12 @@ class DeviceInfoTest {
         val output = "2: end0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 link/ether a4:5e:60:12:34:56 brd ff:ff:ff:ff:ff:ff"
         assertEquals("A4:5E:60:12:34:56", DeviceInfo.parseShellMacs("ip", output))
     }
+
+    @Test
+    fun `wifi direct and monitor derivatives never outrank the adapter`() {
+        val output = "2: wlan0: <BROADCAST,MULTICAST> mtu 1500 link/ether a4:5e:60:12:34:56 brd ff:ff:ff:ff:ff:ff\n" +
+            "3: wlan0p2p0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 link/ether 1e:2a:3b:4c:5d:6e brd ff:ff:ff:ff:ff:ff\n" +
+            "4: wlan0mon: <BROADCAST,UP> mtu 1500 link/ether 1e:2a:3b:4c:5d:6f brd ff:ff:ff:ff:ff:ff"
+        assertEquals("A4:5E:60:12:34:56", DeviceInfo.parseShellMacs("ip", output))
+    }
 }

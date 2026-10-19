@@ -24,6 +24,7 @@ object DeviceInfo {
     private val IP_LINK_UP = Regex("<[^>]*\\bUP\\b[^>]*>")
     private val IP_LINK_ETHER = Regex("link/ether\\s+(\\S+)")
     private val SYSFS_LINE = Regex("^/sys/class/net/([^/\\s]+)/address\\s+(\\S+)")
+    private val DERIVED_IFACE = Regex("(?i)p2p|mon\\d*$|aware|nan\\d*$|-")
     private val PHYSICAL_NAME = Regex("^(eth|wlan|usb|en[a-z0-9]*|wl[a-z0-9]*)\\d*$")
 
     /**
@@ -103,7 +104,8 @@ object DeviceInfo {
         runCatching { File("/sys/class/net/$name/address").readText() }.getOrNull()?.let(::normalize)
 
     /** Shell results carry only a name: accept kernel/udev adapter names (eth*, wlan*, usb*, en*, wl*) or anything sysfs proves physical. */
-    private fun isShellPhysical(name: String): Boolean = PHYSICAL_NAME.matches(name) || isPhysical(name)
+    private fun isShellPhysical(name: String): Boolean =
+        !DERIVED_IFACE.containsMatchIn(name) && (PHYSICAL_NAME.matches(name) || isPhysical(name))
 
     private fun isPhysical(name: String): Boolean =
         name in PREFERRED_INTERFACES ||
