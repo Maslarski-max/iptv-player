@@ -288,4 +288,6 @@
     <string name="playlist_not_provided">Non fornito</string>
     <string name="playlist_format_local_file">File locale</string>
     <string name="playlist_no_active">Nessuna playlist attiva</string>
+    <string name="account_mac_address">Indirizzo MAC</string>
+    <string name="account_mac_unavailable">Non disponibile (nascosto da Android)</string>
 </resources>
