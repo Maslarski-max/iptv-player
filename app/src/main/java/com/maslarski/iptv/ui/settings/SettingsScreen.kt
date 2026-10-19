@@ -61,6 +61,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -248,7 +249,8 @@ private fun SectionCard(
     val interaction = rememberInteractionSource()
     val shape = RoundedCornerShape(16.dp)
     Column(
-        modifier.fillMaxWidth().then(if (compact) Modifier.heightIn(min = 132.dp) else Modifier.height(HUB_CARD_HEIGHT))
+        modifier.fillMaxWidth()
+            .then(if (compact) Modifier.heightIn(min = 132.dp) else Modifier.height(HUB_CARD_HEIGHT * LocalDensity.current.fontScale))
             .focusGlow(interaction, shape, focusedScale = 1.02f, borderWidth = 2.dp, glowColor = Palette.ElectricBlue)
             .clip(shape).background(Palette.SurfaceElevated)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
