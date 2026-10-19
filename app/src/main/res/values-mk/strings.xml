@@ -288,4 +288,6 @@
     <string name="playlist_not_provided">Не е доставено</string>
     <string name="playlist_format_local_file">Локална датотека</string>
     <string name="playlist_no_active">Нема активна плејлиста</string>
+    <string name="account_mac_address">MAC адреса</string>
+    <string name="account_mac_unavailable">Недостапно (скриено од Android)</string>
 </resources>

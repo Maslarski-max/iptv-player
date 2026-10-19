@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
@@ -47,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -95,16 +98,18 @@ import com.maslarski.iptv.domain.model.SyncStatus
 import com.maslarski.iptv.domain.parental.ParentalGate
 import com.maslarski.iptv.ui.components.Badge
 import com.maslarski.iptv.ui.components.GlowButton
-import com.maslarski.iptv.ui.components.Pill
 import com.maslarski.iptv.ui.components.PinDialog
 import com.maslarski.iptv.ui.components.SectionHeader
 import com.maslarski.iptv.ui.components.dpadTextField
 import com.maslarski.iptv.ui.components.focusGlow
+import com.maslarski.iptv.ui.components.rememberFocusState
 import com.maslarski.iptv.ui.components.rememberInteractionSource
 import com.maslarski.iptv.ui.playlists.DeletePlaylistDialog
 import com.maslarski.iptv.ui.playlists.PlaylistRow
 import com.maslarski.iptv.ui.theme.Palette
+import com.maslarski.iptv.util.DeviceInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -113,6 +118,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.DateFormat
 import java.util.Date
 import javax.inject.Inject
@@ -133,6 +139,8 @@ val SupportedLanguages = listOf(
 )
 
 /** One card on the Settings hub; each opens its own back-stack entry so its UI is disposed on Back. */
+private const val HUB_COLUMNS = 4
+
 enum class SettingsSection(val titleRes: Int, val icon: ImageVector) {
     ACCOUNT(R.string.settings_account, Icons.Filled.WorkspacePremium),
     LANGUAGE(R.string.settings_language, Icons.Filled.Language),
@@ -174,19 +182,23 @@ fun SettingsScreen(onOpenSection: (SettingsSection) -> Unit, viewModel: Settings
             if (runCatching { firstFocus.requestFocus() }.isSuccess) return@LaunchedEffect
         }
     }
-    Column(Modifier.fillMaxSize().padding(horizontal = if (compact) 20.dp else 48.dp, vertical = 24.dp)) {
-        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(20.dp))
+    Column(Modifier.fillMaxSize().padding(horizontal = if (compact) 20.dp else 48.dp, vertical = if (compact) 24.dp else 20.dp)) {
+        Text(
+            stringResource(R.string.settings_title),
+            style = if (compact) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
+        )
+        Spacer(Modifier.height(if (compact) 16.dp else 12.dp))
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = if (compact) 160.dp else 280.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 32.dp),
+            columns = if (compact) GridCells.Adaptive(minSize = 160.dp) else GridCells.Fixed(HUB_COLUMNS),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 16.dp),
         ) {
             items(SettingsSection.entries, key = { it.name }) { section ->
                 SectionCard(
                     section = section,
                     summary = sectionSummary(section, state),
+                    compact = compact,
                     modifier = if (section == SettingsSection.entries.first()) Modifier.focusRequester(firstFocus) else Modifier,
                 ) { onOpenSection(section) }
             }
@@ -225,27 +237,33 @@ private fun sectionSummary(section: SettingsSection, state: SettingsHubUiState):
 }
 
 @Composable
-private fun SectionCard(section: SettingsSection, summary: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun SectionCard(
+    section: SettingsSection,
+    summary: String,
+    compact: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     val interaction = rememberInteractionSource()
-    val shape = RoundedCornerShape(20.dp)
+    val shape = RoundedCornerShape(16.dp)
     Column(
-        modifier.fillMaxWidth().heightIn(min = 132.dp)
+        modifier.fillMaxWidth().heightIn(min = if (compact) 132.dp else 108.dp)
             .focusGlow(interaction, shape, focusedScale = 1.02f, borderWidth = 2.dp, glowColor = Palette.ElectricBlue)
             .clip(shape).background(Palette.SurfaceElevated)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
-            .padding(20.dp),
+            .padding(if (compact) 20.dp else 14.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Palette.SurfaceHighest),
+                Modifier.size(if (compact) 44.dp else 36.dp).clip(RoundedCornerShape(10.dp)).background(Palette.SurfaceHighest),
                 contentAlignment = Alignment.Center,
             ) { Icon(section.icon, contentDescription = null, tint = Palette.ElectricBlue) }
             Spacer(Modifier.weight(1f))
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Palette.Muted)
         }
-        Spacer(Modifier.height(16.dp))
-        Text(stringResource(section.titleRes), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(if (compact) 16.dp else 10.dp))
+        Text(stringResource(section.titleRes), style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text(summary, style = MaterialTheme.typography.bodySmall, color = Palette.Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -357,32 +375,25 @@ fun SettingsSectionScreen(
         when (section) {
             SettingsSection.ACCOUNT -> item { state.license?.let { AccountCard(it, onActivate, firstFocus) } }
             SettingsSection.LANGUAGE -> item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(SupportedLanguages.size) { i ->
-                        val lang = SupportedLanguages[i]
-                        val selected = state.settings.languageTag == lang.tag
-                        Pill(
-                            if (lang.tag.isEmpty()) stringResource(R.string.settings_language_system) else lang.label,
-                            selected,
-                            modifier = if (i == 0) Modifier.focusRequester(firstFocus) else Modifier,
-                        ) { viewModel.setLanguage(lang.tag) }
-                    }
-                }
+                OptionGrid(
+                    options = SupportedLanguages,
+                    isSelected = { state.settings.languageTag == it.tag },
+                    label = { if (it.tag.isEmpty()) stringResource(R.string.settings_language_system) else it.label },
+                    onSelect = { viewModel.setLanguage(it.tag) },
+                    firstFocus = firstFocus,
+                )
             }
             SettingsSection.PLAYBACK -> {
                 item {
                     Text(stringResource(R.string.player_aspect_ratio), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
                     Spacer(Modifier.height(8.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(AspectRatioMode.entries.size) { i ->
-                            val mode = AspectRatioMode.entries[i]
-                            Pill(
-                                stringResource(mode.label()),
-                                state.settings.aspectRatio == mode,
-                                modifier = if (i == 0) Modifier.focusRequester(firstFocus) else Modifier,
-                            ) { viewModel.setAspect(mode) }
-                        }
-                    }
+                    OptionGrid(
+                        options = AspectRatioMode.entries,
+                        isSelected = { state.settings.aspectRatio == it },
+                        label = { stringResource(it.label()) },
+                        onSelect = viewModel::setAspect,
+                        firstFocus = firstFocus,
+                    )
                     Spacer(Modifier.height(12.dp))
                 }
                 item {
@@ -399,16 +410,14 @@ fun SettingsSectionScreen(
             SettingsSection.BUFFER -> item {
                 Text(stringResource(R.string.settings_buffer_profile_body), style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
                 Spacer(Modifier.height(12.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(BufferSizeProfile.entries.size) { i ->
-                        val profile = BufferSizeProfile.entries[i]
-                        Pill(
-                            stringResource(profile.label()),
-                            state.settings.bufferProfile == profile,
-                            modifier = if (i == 0) Modifier.focusRequester(firstFocus) else Modifier,
-                        ) { viewModel.setBufferProfile(profile) }
-                    }
-                }
+                OptionGrid(
+                    options = BufferSizeProfile.entries,
+                    isSelected = { state.settings.bufferProfile == it },
+                    label = { stringResource(it.label()) },
+                    onSelect = viewModel::setBufferProfile,
+                    firstFocus = firstFocus,
+                    columns = 4,
+                )
             }
             SettingsSection.PLAYLISTS -> playlistsSection(state, viewModel, onAddPlaylist, onEditPlaylist, onManageCategories, { pendingDelete = it }, firstFocus)
             SettingsSection.METADATA -> item { TmdbKeyField(state.settings.tmdbApiKey, viewModel::setTmdbApiKey, firstFocus) }
@@ -470,12 +479,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.playlistsSection(
     item {
         Text(stringResource(R.string.settings_refresh_mode), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
         Spacer(Modifier.height(8.dp))
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(RefreshMode.entries.size) { i ->
-                val mode = RefreshMode.entries[i]
-                Pill(stringResource(mode.label()), state.settings.refreshMode == mode) { viewModel.setRefreshMode(mode) }
-            }
-        }
+        OptionGrid(
+            options = RefreshMode.entries,
+            isSelected = { state.settings.refreshMode == it },
+            label = { stringResource(it.label()) },
+            onSelect = { viewModel.setRefreshMode(it) },
+            columns = 4,
+        )
         Spacer(Modifier.height(6.dp))
         Text(stringResource(R.string.settings_refresh_mode_body), style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
         Spacer(Modifier.height(28.dp))
@@ -569,6 +579,12 @@ private fun AccountCard(license: LicenseState, onActivate: () -> Unit, focus: Fo
             }
         }
         InfoRow(stringResource(R.string.account_device_id), license.deviceId, mono = true)
+        val mac by produceState<String?>(null) { value = withContext(Dispatchers.IO) { DeviceInfo.macAddress() } }
+        InfoRow(
+            stringResource(R.string.account_mac_address),
+            mac ?: stringResource(R.string.account_mac_unavailable),
+            mono = mac != null,
+        )
         InfoRow(
             stringResource(R.string.account_verification),
             stringResource(if (license.remote) R.string.account_verified_server else R.string.account_verified_local),
@@ -745,19 +761,75 @@ private fun ActionRow(title: String, body: String, icon: ImageVector, onClick: (
 private fun DecoderPicker(title: String, selected: DecoderMode, onSelect: (DecoderMode) -> Unit, firstFocus: FocusRequester? = null) {
     Text(title, style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
     Spacer(Modifier.height(8.dp))
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(DecoderMode.entries.size) { i ->
-            val mode = DecoderMode.entries[i]
-            val label = when (mode) {
-                DecoderMode.HARDWARE -> R.string.settings_decoder_hardware
-                DecoderMode.SOFTWARE -> R.string.settings_decoder_software
+    OptionGrid(
+        options = DecoderMode.entries,
+        isSelected = { selected == it },
+        label = {
+            stringResource(
+                when (it) {
+                    DecoderMode.HARDWARE -> R.string.settings_decoder_hardware
+                    DecoderMode.SOFTWARE -> R.string.settings_decoder_software
+                },
+            )
+        },
+        onSelect = onSelect,
+        firstFocus = firstFocus,
+        columns = 4,
+    )
+}
+
+/**
+ * Options laid out in rows of [columns] equal-width cells (2 on phones) so the D-pad moves in both
+ * directions instead of along one long horizontal lane. Trailing empty cells keep widths uniform.
+ */
+@Composable
+private fun <T> OptionGrid(
+    options: List<T>,
+    isSelected: (T) -> Boolean,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    firstFocus: FocusRequester? = null,
+    columns: Int = 5,
+) {
+    val cols = if (LocalConfiguration.current.screenWidthDp < 600) 2 else columns
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        options.chunked(cols).forEachIndexed { rowIndex, row ->
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEachIndexed { i, option ->
+                    val focusModifier = if (rowIndex == 0 && i == 0 && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier
+                    OptionCell(label(option), isSelected(option), modifier = Modifier.weight(1f).fillMaxHeight().then(focusModifier)) { onSelect(option) }
+                }
+                repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
             }
-            Pill(
-                stringResource(label),
-                selected == mode,
-                modifier = if (i == 0 && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier,
-            ) { onSelect(mode) }
         }
+    }
+}
+
+@Composable
+private fun OptionCell(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val interaction = rememberInteractionSource()
+    val focused by rememberFocusState(interaction)
+    val shape = RoundedCornerShape(12.dp)
+    val bg = when {
+        focused -> Palette.NeonPurple
+        selected -> Palette.SurfaceHighest
+        else -> Palette.Surface
+    }
+    Row(
+        modifier
+            .focusGlow(interaction, shape, focusedScale = 1.03f, borderWidth = 2.dp, glowColor = Palette.ElectricBlue)
+            .clip(shape)
+            .background(bg)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        if (selected) {
+            Icon(Icons.Filled.Check, contentDescription = null, tint = if (focused) Color.White else Palette.ElectricBlue, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(text, style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 3, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 
