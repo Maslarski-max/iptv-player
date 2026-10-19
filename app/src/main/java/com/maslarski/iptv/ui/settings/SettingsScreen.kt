@@ -61,6 +61,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -140,6 +141,7 @@ val SupportedLanguages = listOf(
 
 /** One card on the Settings hub; each opens its own back-stack entry so its UI is disposed on Back. */
 private const val HUB_COLUMNS = 4
+private val HUB_CARD_HEIGHT = 140.dp
 
 enum class SettingsSection(val titleRes: Int, val icon: ImageVector) {
     ACCOUNT(R.string.settings_account, Icons.Filled.WorkspacePremium),
@@ -247,7 +249,8 @@ private fun SectionCard(
     val interaction = rememberInteractionSource()
     val shape = RoundedCornerShape(16.dp)
     Column(
-        modifier.fillMaxWidth().heightIn(min = if (compact) 132.dp else 108.dp)
+        modifier.fillMaxWidth()
+            .then(if (compact) Modifier.heightIn(min = 132.dp) else Modifier.height(HUB_CARD_HEIGHT * maxOf(1f, LocalDensity.current.fontScale)))
             .focusGlow(interaction, shape, focusedScale = 1.02f, borderWidth = 2.dp, glowColor = Palette.ElectricBlue)
             .clip(shape).background(Palette.SurfaceElevated)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
@@ -264,7 +267,7 @@ private fun SectionCard(
         }
         Spacer(Modifier.height(if (compact) 16.dp else 10.dp))
         Text(stringResource(section.titleRes), style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(summary, style = MaterialTheme.typography.bodySmall, color = Palette.Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(summary, style = MaterialTheme.typography.bodySmall, color = Palette.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
