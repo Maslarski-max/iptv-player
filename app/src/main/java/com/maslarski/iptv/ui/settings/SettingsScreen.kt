@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -261,7 +263,7 @@ private fun SectionCard(
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Palette.Muted)
         }
         Spacer(Modifier.height(if (compact) 16.dp else 10.dp))
-        Text(stringResource(section.titleRes), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(stringResource(section.titleRes), style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text(summary, style = MaterialTheme.typography.bodySmall, color = Palette.Muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -792,10 +794,10 @@ private fun <T> OptionGrid(
     val cols = if (LocalConfiguration.current.screenWidthDp < 600) 2 else columns
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         options.chunked(cols).forEachIndexed { rowIndex, row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEachIndexed { i, option ->
                     val focusModifier = if (rowIndex == 0 && i == 0 && firstFocus != null) Modifier.focusRequester(firstFocus) else Modifier
-                    OptionCell(label(option), isSelected(option), modifier = Modifier.weight(1f).then(focusModifier)) { onSelect(option) }
+                    OptionCell(label(option), isSelected(option), modifier = Modifier.weight(1f).fillMaxHeight().then(focusModifier)) { onSelect(option) }
                 }
                 repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
             }
@@ -827,7 +829,7 @@ private fun OptionCell(text: String, selected: Boolean, modifier: Modifier = Mod
             Icon(Icons.Filled.Check, contentDescription = null, tint = if (focused) Color.White else Palette.ElectricBlue, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
         }
-        Text(text, style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+        Text(text, style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 3, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 
