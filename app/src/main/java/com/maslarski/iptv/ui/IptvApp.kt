@@ -256,13 +256,13 @@ private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
             )
         }
         composable<Route.Live> {
-            LiveScreen(isCompact = isCompact, onPlay = { c -> nav.navigate(Route.Player(c.playlistId, c.id, ContentType.LIVE.name, c.categoryId)) })
+            LiveScreen(isCompact = isCompact, onPlay = { c -> nav.navigate(Route.Player(c.playlistId, c.id, ContentType.LIVE.name, c.categoryId)) }, onAddPlaylist = { nav.navigate(Route.EditPlaylist()) })
         }
         composable<Route.Movies> {
-            BrowseScreen(stringResource(R.string.nav_movies), ContentType.MOVIE, hiltViewModel<MoviesViewModel>(), isCompact, openDetails)
+            BrowseScreen(stringResource(R.string.nav_movies), ContentType.MOVIE, hiltViewModel<MoviesViewModel>(), isCompact, openDetails, onAddPlaylist = { nav.navigate(Route.EditPlaylist()) })
         }
         composable<Route.Series> {
-            BrowseScreen(stringResource(R.string.nav_series), ContentType.SERIES, hiltViewModel<SeriesViewModel>(), isCompact, openDetails)
+            BrowseScreen(stringResource(R.string.nav_series), ContentType.SERIES, hiltViewModel<SeriesViewModel>(), isCompact, openDetails, onAddPlaylist = { nav.navigate(Route.EditPlaylist()) })
         }
         composable<Route.Search> { SearchScreen(onPlay = play, onOpenDetails = openDetails) }
         composable<Route.Favorites> { FavoritesScreen(onPlay = playFavorite, onOpenDetails = openDetails) }

@@ -75,7 +75,7 @@ abstract class BrowseViewModel(
             selectedCategoryId = sel,
             items = items,
             lockedCategoryIds = lockedIds,
-            loading = p == null,
+            loading = false,
         )
     }.let { base ->
         combine(base, epgFlow, pendingUnlock) { s, epg, pending -> s.copy(nowPlaying = epg, pendingUnlockCategoryId = pending) }
