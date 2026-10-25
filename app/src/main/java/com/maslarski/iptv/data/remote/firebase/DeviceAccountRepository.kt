@@ -83,7 +83,6 @@ class DeviceAccountRepository @Inject constructor(
             val registration = ref.addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.w(TAG, "device document listener failed", error)
-                    trySend(null)
                     return@addSnapshotListener
                 }
                 trySend(snapshot?.takeIf { it.exists() }?.toAccount(deviceId))
