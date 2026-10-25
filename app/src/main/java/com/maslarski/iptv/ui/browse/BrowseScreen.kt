@@ -35,7 +35,11 @@ import com.maslarski.iptv.domain.model.Category
 import com.maslarski.iptv.domain.model.ContentType
 import com.maslarski.iptv.domain.model.MediaItem
 import com.maslarski.iptv.ui.components.ChannelCard
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PlaylistPlay
 import com.maslarski.iptv.ui.components.EmptyState
+import com.maslarski.iptv.ui.components.GlowButton
 import com.maslarski.iptv.ui.components.LoadingState
 import com.maslarski.iptv.ui.components.Pill
 import com.maslarski.iptv.ui.components.PinDialog
@@ -49,6 +53,7 @@ fun BrowseScreen(
     viewModel: BrowseViewModel,
     isCompact: Boolean,
     onItemClick: (MediaItem) -> Unit,
+    onAddPlaylist: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var pinError by remember { mutableStateOf<String?>(null) }
@@ -66,6 +71,12 @@ fun BrowseScreen(
 
     when {
         state.loading -> LoadingState()
+        state.playlistId == null -> EmptyState(
+            title = stringResource(R.string.home_empty_title),
+            body = stringResource(R.string.home_empty_body),
+            icon = Icons.Filled.PlaylistPlay,
+            action = { GlowButton(stringResource(R.string.action_add_playlist), onAddPlaylist, icon = Icons.Filled.Add) },
+        )
         state.categories.isEmpty() && state.items.isEmpty() -> EmptyState(stringResource(R.string.empty_section))
         isCompact -> Column(Modifier.fillMaxSize()) {
             Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp))
