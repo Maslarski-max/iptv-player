@@ -112,11 +112,14 @@ import com.maslarski.iptv.util.DeviceInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -169,7 +172,7 @@ class SettingsHubViewModel @Inject constructor(
     license: LicenseRepository,
 ) : ViewModel() {
     val state: StateFlow<SettingsHubUiState> =
-        combine(settingsRepo.settings, playlists.activePlaylist, license.state) { s, p, lic -> SettingsHubUiState(s, p, lic) }
+        combine(settingsRepo.settings, playlists.activePlaylist, license.state.orNullUntilLoaded()) { s, p, lic -> SettingsHubUiState(s, p, lic) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsHubUiState())
 }
 
@@ -280,6 +283,10 @@ data class SettingsUiState(
     val license: LicenseState? = null,
 )
 
+/** Settings must not wait on the Firestore-backed license flow (it stays silent while offline). */
+private fun Flow<LicenseState>.orNullUntilLoaded(): Flow<LicenseState?> =
+    map<LicenseState, LicenseState?> { it }.onStart { emit(null) }
+
 data class LockedCategories(val categories: List<Category> = emptyList(), val lockedIds: Set<String> = emptySet())
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -294,7 +301,7 @@ class SettingsViewModel @Inject constructor(
     license: LicenseRepository,
 ) : ViewModel() {
     val state: StateFlow<SettingsUiState> = combine(
-        settingsRepo.settings, playlists.playlists, syncer.status, license.state,
+        settingsRepo.settings, playlists.playlists, syncer.status, license.state.orNullUntilLoaded(),
     ) { s, lists, sync, lic -> SettingsUiState(s, lists, sync, lic) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
