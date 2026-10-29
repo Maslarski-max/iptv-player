@@ -48,6 +48,7 @@ import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -152,9 +153,12 @@ fun IptvApp() {
         }
     }
     val switchedTo = stringResource(R.string.reminder_switched)
+    // The collector below runs for the whole composition lifetime; read the latest license state,
+    // not the (null) value captured when the effect started, or auto-switch never fires.
+    val currentLicense by rememberUpdatedState(license)
     LaunchedEffect(Unit) {
         app.firedReminders.collect { r ->
-            if (r.autoSwitch && license?.isUnlocked == true) {
+            if (r.autoSwitch && currentLicense?.isUnlocked == true) {
                 nav.navigate(Route.Player(r.playlistId, r.channelId, ContentType.LIVE.name, r.categoryId)) {
                     popUpTo<Route.Player> { inclusive = true }
                 }
