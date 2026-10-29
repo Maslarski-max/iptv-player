@@ -144,9 +144,10 @@ fun IptvApp() {
     LaunchedEffect(Unit) { app.tickReminders() }
     LaunchedEffect(pendingPlay, license) {
         val request = pendingPlay ?: return@LaunchedEffect
-        if (license == null) return@LaunchedEffect
         app.consumePendingPlay()
-        if (license?.isUnlocked == true) {
+        // Same rule as the activation gate below: only a *known* locked license blocks playback; while the
+        // Firestore-backed state is still unresolved (offline / listener never answered) playback is allowed.
+        if (license?.isUnlocked != false) {
             nav.navigate(Route.Player(request.playlistId, request.channelId, ContentType.LIVE.name, request.categoryId, request.favoritesOnly)) {
                 popUpTo<Route.Player> { inclusive = true }
             }
@@ -158,7 +159,7 @@ fun IptvApp() {
     val currentLicense by rememberUpdatedState(license)
     LaunchedEffect(Unit) {
         app.firedReminders.collect { r ->
-            if (r.autoSwitch && currentLicense?.isUnlocked == true) {
+            if (r.autoSwitch && currentLicense?.isUnlocked != false) {
                 nav.navigate(Route.Player(r.playlistId, r.channelId, ContentType.LIVE.name, r.categoryId)) {
                     popUpTo<Route.Player> { inclusive = true }
                 }
