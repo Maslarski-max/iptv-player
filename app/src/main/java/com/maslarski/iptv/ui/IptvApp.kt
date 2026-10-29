@@ -48,6 +48,7 @@ import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -72,6 +73,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.toRoute
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -98,6 +100,8 @@ import com.maslarski.iptv.ui.playlists.PlaylistsScreen
 import com.maslarski.iptv.ui.search.SearchScreen
 import com.maslarski.iptv.ui.settings.ManageCategoriesScreen
 import com.maslarski.iptv.ui.settings.SettingsScreen
+import com.maslarski.iptv.ui.settings.SettingsSection
+import com.maslarski.iptv.ui.settings.SettingsSectionScreen
 import com.maslarski.iptv.ui.theme.Palette
 
 private val TvOverscanTop = 48.dp
@@ -134,7 +138,7 @@ fun IptvApp() {
     val gateExempt = destination == null ||
         destination.hasRoute<Route.Settings>() || destination.hasRoute<Route.Activation>() ||
         destination.hasRoute<Route.Playlists>() || destination.hasRoute<Route.EditPlaylist>() ||
-        destination.hasRoute<Route.ManageCategories>()
+        destination.hasRoute<Route.ManageCategories>() || destination.hasRoute<Route.SettingsSection>()
     val locked = license?.isUnlocked == false && !gateExempt
 
     LaunchedEffect(Unit) { app.tickReminders() }
@@ -149,9 +153,12 @@ fun IptvApp() {
         }
     }
     val switchedTo = stringResource(R.string.reminder_switched)
+    // The collector below runs for the whole composition lifetime; read the latest license state,
+    // not the (null) value captured when the effect started, or auto-switch never fires.
+    val currentLicense by rememberUpdatedState(license)
     LaunchedEffect(Unit) {
         app.firedReminders.collect { r ->
-            if (r.autoSwitch && license?.isUnlocked == true) {
+            if (r.autoSwitch && currentLicense?.isUnlocked == true) {
                 nav.navigate(Route.Player(r.playlistId, r.channelId, ContentType.LIVE.name, r.categoryId)) {
                     popUpTo<Route.Player> { inclusive = true }
                 }
@@ -253,18 +260,22 @@ private fun AppNavHost(nav: NavHostController, isCompact: Boolean) {
             )
         }
         composable<Route.Live> {
-            LiveScreen(isCompact = isCompact, onPlay = { c -> nav.navigate(Route.Player(c.playlistId, c.id, ContentType.LIVE.name, c.categoryId)) })
+            LiveScreen(isCompact = isCompact, onPlay = { c -> nav.navigate(Route.Player(c.playlistId, c.id, ContentType.LIVE.name, c.categoryId)) }, onAddPlaylist = { nav.navigate(Route.EditPlaylist()) })
         }
         composable<Route.Movies> {
-            BrowseScreen(stringResource(R.string.nav_movies), ContentType.MOVIE, hiltViewModel<MoviesViewModel>(), isCompact, openDetails)
+            BrowseScreen(stringResource(R.string.nav_movies), ContentType.MOVIE, hiltViewModel<MoviesViewModel>(), isCompact, openDetails, onAddPlaylist = { nav.navigate(Route.EditPlaylist()) })
         }
         composable<Route.Series> {
-            BrowseScreen(stringResource(R.string.nav_series), ContentType.SERIES, hiltViewModel<SeriesViewModel>(), isCompact, openDetails)
+            BrowseScreen(stringResource(R.string.nav_series), ContentType.SERIES, hiltViewModel<SeriesViewModel>(), isCompact, openDetails, onAddPlaylist = { nav.navigate(Route.EditPlaylist()) })
         }
         composable<Route.Search> { SearchScreen(onPlay = play, onOpenDetails = openDetails) }
         composable<Route.Favorites> { FavoritesScreen(onPlay = playFavorite, onOpenDetails = openDetails) }
         composable<Route.Settings> {
-            SettingsScreen(
+            SettingsScreen(onOpenSection = { nav.navigate(Route.SettingsSection(it.name)) })
+        }
+        composable<Route.SettingsSection> { entry ->
+            SettingsSectionScreen(
+                section = SettingsSection.valueOf(entry.toRoute<Route.SettingsSection>().section),
                 onAddPlaylist = { nav.navigate(Route.EditPlaylist()) },
                 onEditPlaylist = { nav.navigate(Route.EditPlaylist(it)) },
                 onActivate = { nav.navigate(Route.Activation) },

@@ -34,7 +34,11 @@ import com.maslarski.iptv.domain.model.ContentType
 import com.maslarski.iptv.domain.model.EpgProgram
 import com.maslarski.iptv.domain.parental.ParentalGate
 import com.maslarski.iptv.domain.reminder.ReminderManager
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PlaylistPlay
 import com.maslarski.iptv.ui.components.EmptyState
+import com.maslarski.iptv.ui.components.GlowButton
 import com.maslarski.iptv.ui.components.LoadingState
 import com.maslarski.iptv.ui.components.Pill
 import com.maslarski.iptv.ui.components.PinDialog
@@ -99,7 +103,7 @@ class LiveTvViewModel @Inject constructor(
     }
 
     val state: StateFlow<LiveUiState> = combine(active, categories, selected, channels, locked) { p, cats, sel, list, lockedIds ->
-        LiveUiState(playlistId = p?.id, categories = cats, selectedCategoryId = sel, channels = list, lockedCategoryIds = lockedIds, loading = p == null)
+        LiveUiState(playlistId = p?.id, categories = cats, selectedCategoryId = sel, channels = list, lockedCategoryIds = lockedIds, loading = false)
     }.let { base ->
         combine(base, nowPlaying, pendingUnlock, reminders.upcoming, lastPlayed) { s, epg, pending, upcoming, last ->
             s.copy(nowPlaying = epg, pendingUnlockCategoryId = pending, reminders = upcoming.associateBy { reminderKey(it.epgChannelId, it.startMillis) }, lastPlayedChannelId = last)
@@ -149,7 +153,7 @@ class LiveTvViewModel @Inject constructor(
 }
 
 @Composable
-fun LiveScreen(isCompact: Boolean, onPlay: (Channel) -> Unit, viewModel: LiveTvViewModel = hiltViewModel()) {
+fun LiveScreen(isCompact: Boolean, onPlay: (Channel) -> Unit, onAddPlaylist: () -> Unit, viewModel: LiveTvViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val play: (Channel) -> Unit = { viewModel.markPlayed(it); onPlay(it) }
     var restoreFocus by remember { mutableStateOf(true) }
@@ -192,6 +196,12 @@ fun LiveScreen(isCompact: Boolean, onPlay: (Channel) -> Unit, viewModel: LiveTvV
 
     when {
         state.loading -> LoadingState()
+        state.playlistId == null -> EmptyState(
+            title = stringResource(R.string.home_empty_title),
+            body = stringResource(R.string.home_empty_body),
+            icon = Icons.Filled.PlaylistPlay,
+            action = { GlowButton(stringResource(R.string.action_add_playlist), onAddPlaylist, icon = Icons.Filled.Add) },
+        )
         state.categories.isEmpty() && state.channels.isEmpty() -> EmptyState(stringResource(R.string.empty_section))
         isCompact -> Column(Modifier.fillMaxSize()) {
             Text(stringResource(R.string.nav_live), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp))

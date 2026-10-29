@@ -203,10 +203,17 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
         delay(OSD_TIMEOUT_MS)
         if (!latestState.isPaused) controlsVisible = false
     }
-    // Settings / track panels auto-dismiss after the same inactivity window; D-pad keys restart it.
-    LaunchedEffect(panel, lastPanelInteraction) {
-        if (panel !in AUTO_DISMISS_PANELS) return@LaunchedEffect
-        delay(OSD_TIMEOUT_MS)
+    // Settings / track panels auto-dismiss after the same inactivity window; the zapping overlay gets a longer
+    // one (EPG reading) and stays while a reminder dialog is open. D-pad keys restart the countdown.
+    LaunchedEffect(panel, lastPanelInteraction, reminderSelection) {
+        when {
+            panel == Panel.GUIDE -> {
+                if (reminderSelection != null) return@LaunchedEffect
+                delay(GUIDE_TIMEOUT_MS)
+            }
+            panel in AUTO_DISMISS_PANELS -> delay(OSD_TIMEOUT_MS)
+            else -> return@LaunchedEffect
+        }
         panel = Panel.NONE
         if (!latestState.isPaused) controlsVisible = false
     }
@@ -268,7 +275,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 }
                 // Only D-pad keys restart the countdown, and only while the OSD is already visible; nothing reveals it implicitly.
                 if (panel == Panel.NONE && controlsVisible && event.key in DPAD_KEYS) poke()
-                if (panel in AUTO_DISMISS_PANELS && event.key in DPAD_KEYS) pokePanel()
+                if ((panel in AUTO_DISMISS_PANELS || panel == Panel.GUIDE) && event.key in DPAD_KEYS) pokePanel()
                 handled
             }
             // Touch (phones / Play testers): a tap on bare live video opens the guide (like D-pad Left), on VOD the
@@ -307,6 +314,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                 }
                 view.subtitleView?.setApplyEmbeddedStyles(true)
             },
+            onRelease = { view -> view.player = null },
             modifier = when (state.aspect) {
                 AspectRatioMode.RATIO_16_9 -> Modifier.fillMaxHeight().aspectRatio(16f / 9f, matchHeightConstraintsFirst = true).align(Alignment.Center)
                 AspectRatioMode.RATIO_4_3 -> Modifier.fillMaxHeight().aspectRatio(4f / 3f, matchHeightConstraintsFirst = true).align(Alignment.Center)
@@ -710,6 +718,7 @@ private fun TrackPanel(
 }
 
 private const val OSD_TIMEOUT_MS = 5_000L
+private const val GUIDE_TIMEOUT_MS = 10_000L
 private const val BANNER_TIMEOUT_MS = 3_000L
 
 private fun formatTime(ms: Long): String {

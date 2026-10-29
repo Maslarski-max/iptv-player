@@ -274,4 +274,24 @@
     <string name="settings_buffer_medium">متوسط (متوازن - افتراضي)</string>
     <string name="settings_buffer_large">كبير (احتفاظ عالٍ / اتصال ضعيف)</string>
     <string name="settings_buffer_extra_large">كبير جدًا (أقصى احتفاظ / اتصال ضعيف)</string>
+    <string name="settings_back_hint">اضغط رجوع للعودة إلى الإعدادات</string>
+    <string name="settings_parental_disabled">قفل PIN متوقف</string>
+    <string name="settings_tmdb_custom">مفتاح مخصص</string>
+    <string name="settings_tmdb_builtin">مفتاح مدمج</string>
+    <string name="settings_tmdb_none">لم يتم تعيين مفتاح</string>
+    <string name="settings_decoder_hw_short">عتاد</string>
+    <string name="settings_decoder_sw_short">برمجي</string>
+    <string name="playlist_details_title">تفاصيل قائمة التشغيل النشطة</string>
+    <string name="playlist_host">الخادم / المضيف</string>
+    <string name="playlist_stream_format">صيغة البث</string>
+    <string name="playlist_epg_status">مزامنة EPG</string>
+    <string name="playlist_epg_not_configured">غير مهيأ</string>
+    <string name="playlist_line_status">حالة الخط</string>
+    <string name="playlist_max_connections">أقصى عدد اتصالات</string>
+    <string name="playlist_expiry_unlimited">غير محدود</string>
+    <string name="playlist_not_provided">غير متوفر</string>
+    <string name="playlist_format_local_file">ملف محلي</string>
+    <string name="playlist_no_active">لا توجد قائمة تشغيل نشطة</string>
+    <string name="account_mac_address">عنوان MAC</string>
+    <string name="account_mac_unavailable">غير متاح (مخفي بواسطة Android)</string>
 </resources>

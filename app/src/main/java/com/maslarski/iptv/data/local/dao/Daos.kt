@@ -52,6 +52,12 @@ interface PlaylistDao {
     @Query("UPDATE playlists SET lastSyncedAt = :at, channelCount = :channels, movieCount = :movies, seriesCount = :series WHERE id = :id")
     suspend fun updateSyncStats(id: Long, at: Long, channels: Int, movies: Int, series: Int)
 
+    @Query("UPDATE playlists SET epgSyncedAt = :at WHERE id = :id")
+    suspend fun updateEpgSyncedAt(id: Long, at: Long)
+
+    @Query("UPDATE playlists SET accountStatus = :status, accountExpiresAt = :expiresAt, maxConnections = :maxConnections, outputFormats = :outputFormats WHERE id = :id")
+    suspend fun updateAccountInfo(id: Long, status: String?, expiresAt: Long?, maxConnections: Int?, outputFormats: String?)
+
     @Query("DELETE FROM playlists WHERE id = :id")
     suspend fun delete(id: Long)
 

@@ -6,6 +6,7 @@ import com.maslarski.iptv.data.mapper.toDomain
 import com.maslarski.iptv.data.mapper.toEntity
 import com.maslarski.iptv.domain.model.ContentType
 import com.maslarski.iptv.domain.model.Playlist
+import com.maslarski.iptv.domain.model.PlaylistType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -24,12 +25,22 @@ class PlaylistRepository @Inject constructor(private val db: IptvDatabase) {
     suspend fun save(playlist: Playlist): Long = db.withTransaction {
         val makeActive = playlist.isActive || db.playlistDao().count() == 0
         val existing = if (playlist.id != 0L) db.playlistDao().getById(playlist.id) else null
+        val sameSource = existing != null && existing.type == playlist.type && existing.url == playlist.url &&
+            existing.username == playlist.username && existing.password == playlist.password
+        val keepAccount = sameSource
+        val keepEpg = existing != null && existing.type == playlist.type && existing.epgUrl == playlist.epgUrl &&
+            (playlist.type == PlaylistType.M3U || sameSource)
         val entity = playlist.copy(
             isActive = makeActive || existing?.isActive == true,
             lastSyncedAt = existing?.lastSyncedAt,
             channelCount = existing?.channelCount ?: 0,
             movieCount = existing?.movieCount ?: 0,
             seriesCount = existing?.seriesCount ?: 0,
+            epgSyncedAt = existing?.epgSyncedAt?.takeIf { keepEpg },
+            accountStatus = existing?.accountStatus?.takeIf { keepAccount },
+            accountExpiresAt = existing?.accountExpiresAt?.takeIf { keepAccount },
+            maxConnections = existing?.maxConnections?.takeIf { keepAccount },
+            outputFormats = if (keepAccount) existing.toDomain().outputFormats else emptyList(),
         ).toEntity()
         val insertedId = db.playlistDao().insert(entity)
         val resolved = if (playlist.id == 0L) insertedId else playlist.id

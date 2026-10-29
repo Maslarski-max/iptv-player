@@ -25,12 +25,18 @@ fun PlaylistEntity.toDomain() = Playlist(
     id = id, name = name, type = type, url = url, username = username, password = password,
     epgUrl = epgUrl, isActive = isActive, lastSyncedAt = lastSyncedAt,
     channelCount = channelCount, movieCount = movieCount, seriesCount = seriesCount,
+    epgSyncedAt = epgSyncedAt, accountStatus = accountStatus, accountExpiresAt = accountExpiresAt,
+    maxConnections = maxConnections,
+    outputFormats = outputFormats?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty(),
 )
 
 fun Playlist.toEntity() = PlaylistEntity(
     id = id, name = name, type = type, url = url, username = username, password = password,
     epgUrl = epgUrl, isActive = isActive, lastSyncedAt = lastSyncedAt,
     channelCount = channelCount, movieCount = movieCount, seriesCount = seriesCount,
+    epgSyncedAt = epgSyncedAt, accountStatus = accountStatus, accountExpiresAt = accountExpiresAt,
+    maxConnections = maxConnections,
+    outputFormats = outputFormats.takeIf { it.isNotEmpty() }?.joinToString(","),
 )
 
 fun CategoryEntity.toDomain(itemCount: Int = 0) =
